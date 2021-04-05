@@ -74,10 +74,10 @@ class GraphSAGE(nn.Module):
     # output layer
     self.mlp_layers.append(SAGEConvMLP(n_hidden, n_classes, aggregator_type)) # activation None
 
-  def forward(self, graph, inputs, ampbyp, ampbyp_dgl):
+  def forward(self, graph, inputs, ampbyp, ampbyp_dgl, degrees):
     h = self.dropout(inputs)
     for l, (agg_layer, mlp_layer) in enumerate(zip(self.agg_layers, self.mlp_layers)):
-      z = agg_layer(self, graph, ampbyp, ampbyp_dgl, h)
+      z = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, h)
       h = mlp_layer(graph, z, z)
     return h
 
@@ -185,10 +185,27 @@ def oned_partition(rank, size, replication, inputs, adj_matrix, normalization):
     return inputs_loc, adj_matrix_loc, am_pbyp
 
 
-def evaluate(model, graph, features, labels, nid, ampbyp, ampbyp_dgl):
+def evaluate(model, graph, features, labels, nid, ampbyp, ampbyp_dgl, degrees, group):
     model.eval()
     with torch.no_grad():
-        logits = model(graph, features, ampbyp, ampbyp_dgl)
+        logits = model(graph, features, ampbyp, ampbyp_dgl, degrees)
+
+        # all-gather logits across ranks
+        logits_recv = []
+        for i in range(len(ampbyp)):
+            logits_recv.append(torch.FloatTensor(ampbyp[0].size(1), logits.size(1)))
+
+        if logits.size(0) != ampbyp[0].size(1):
+            pad_row = ampbyp[0].size(1) - logits.size(0)
+            logits = torch.cat((logits, torch.FloatTensor(pad_row, logits.size(1))), dim=0)
+
+        dist.all_gather(logits_recv, logits, group)
+
+        padding = graph.size(0) - ampbyp[0].size(1) * (len(ampbyp) - 1)
+        logits_recv[-1] = logits_recv[-1][:padding,:]
+
+        logits = torch.cat(logits_recv)
+
         logits = logits[nid]
         labels = labels[nid]
         _, indices = torch.max(logits, dim=1)
@@ -302,8 +319,10 @@ def main(args):
                                             num_dst_nodes=ampbyp[i].size(0)))
         print(f"i: {i} ampbyp.size: {ampbyp[i].size()}")
 
+    degrees = g.in_degrees()
     features.requires_grad = True
     # create GraphSAGE model
+    torch.manual_seed(0)
     model = GraphSAGE(in_feats,
                       args.n_hidden,
                       n_classes,
@@ -325,60 +344,53 @@ def main(args):
     # use optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
+    rank_c = rank // args.replication
+    n_per_proc = math.ceil(float(g_loc.size(0)) / (size / args.replication))
+
+    rank_train_mask = torch.split(train_mask, n_per_proc, dim=0)[rank_c]
+    rank_val_mask = torch.split(val_mask, n_per_proc, dim=0)[rank_c]
+    label_rank = torch.split(labels, n_per_proc, dim=0)[rank_c]
+    rank_train_nids= rank_train_mask.nonzero().squeeze()
+    val_nids = rank_val_mask.nonzero().squeeze()
+
     # initialize graph
     dur = []
     for epoch in range(args.n_epochs):
         model.train()
         if epoch >= 3:
             t0 = time.time()
-        # forward
-        # logits = model(g, features, ampbyp)
-        logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl)
-        
-        rank_c = rank // args.replication
-        var = logits.size(0)
-        rank_train_mask = torch.split(train_mask, logits.size(0), dim=0)[rank_c]
-        rank_val_mask = torch.split(val_mask, logits.size(0), dim=0)[rank_c]
-        label_rank = torch.split(labels, logits.size(0), dim=0)[rank_c]
-        train_nids= rank_train_mask.nonzero().squeeze()
-        val_nids = rank_val_mask.nonzero().squeeze()
 
-        print("train_mask ==========", train_mask.shape)
-        print("labl =============", labels.dtype)
-        print("rank_train_mask ===========", train_nids.dtype)
-        print("label_rank =============", label_rank.dtype)
-        print("labels ------>",label_rank[rank_train_mask].size()) #, " ", labels[train_nid].shape)
-        print("logits ------>",logits[rank_train_mask].size())
-         
-        # if list(label_rank[rank_train_mask].size())[0] > 0:
-        # loss = F.cross_entropy(logits[rank_train_mask], label_rank[rank_train_mask]) 
-        # for param in model.parameters(): param.requires_grad = True 
-        # for param in model.parameters(): param.requires_grad=True
-        loss = F.cross_entropy(logits[train_nids], label_rank[train_nids]) 
-        # loss = Variable(loss, requires_grad = True)
-        # loss.requires_grad = True
+        # forward
+        logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
+
+        loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids]) 
+        loss_recv = []
+        loss = loss * rank_train_nids.size(0)
+        for i in range(size):
+            loss_recv.append(torch.Tensor(loss.size()))
+        dist.all_gather(loss_recv, loss, group)
+        loss_recv[rank] = loss
+        loss = sum(loss_recv) / train_nid.size(0)
+
         optimizer.zero_grad()
         loss.backward()
-        
-        # else:
-        #     fake_loss = (logits * torch.FloatTensor(logits.size(), device=device).fill_(0)).sum()
-        #     fake_loss.backward()
+
         optimizer.step()
 
         if epoch >= 3:
             dur.append(time.time() - t0)
 
-        # acc = evaluate(model, g, features, labels, val_nids, ampbyp)
-        acc = evaluate(model, g_loc, features_loc, labels, val_nids, ampbyp, ampbyp_dgl)
-        print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
-              "ETputs(KTEPS) {:.2f}".format(epoch, np.mean(dur), loss.item(),
+        acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, group)
+        print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
+              "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
                                             acc, n_edges / np.mean(dur) / 1000), flush=True)
 
     rank_test_mask = torch.split(test_mask, logits.size(0), dim=0)[rank_c]
     test_nids = rank_test_mask.nonzero().squeeze()
     print()
     # acc = evaluate(model, g, features, labels, test_nids, ampbyp)
-    acc = evaluate(model, g_loc, features_loc, labels, test_nids, ampbyp, ampbyp_dgl)
+    # acc = evaluate(model, g_loc, features_loc, labels, test_nids, ampbyp, ampbyp_dgl, degrees)
+    acc = evaluate(model, g_loc, features_loc, labels, test_nid, ampbyp, ampbyp_dgl, degrees, group)
     print("Test Accuracy {:.4f}".format(acc))
 
 

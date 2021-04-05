@@ -43,9 +43,9 @@ class GraphSAGE(nn.Module):
         h = self.dropout(inputs)
         for l, layer in enumerate(self.layers):
             h = layer(graph, h)
-            if l != len(self.layers) - 1:
-                h = self.activation(h)
-                h = self.dropout(h)
+            # if l != len(self.layers) - 1:
+            #     h = self.activation(h)
+            #     h = self.dropout(h)
         return h
 
 
@@ -105,6 +105,7 @@ def main(args):
         g = g.int().to(args.gpu)
 
     # create GraphSAGE model
+    torch.manual_seed(0)
     model = GraphSAGE(in_feats,
                       args.n_hidden,
                       n_classes,
@@ -127,10 +128,14 @@ def main(args):
             t0 = time.time()
         # forward
         logits = model(g, features)
+        print(f"logits: {logits}")
         loss = F.cross_entropy(logits[train_nid], labels[train_nid])
 
         optimizer.zero_grad()
         loss.backward()
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                print(f"name: {name} param.grad: {param.grad}")
         optimizer.step()
 
         if epoch >= 3:
@@ -139,7 +144,7 @@ def main(args):
         acc = evaluate(model, g, features, labels, val_nid)
         print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
               "ETputs(KTEPS) {:.2f}".format(epoch, np.mean(dur), loss.item(),
-                                            acc, n_edges / np.mean(dur) / 1000))
+                                            acc, n_edges / np.mean(dur) / 1000), flush=True)
 
     print()
     acc = evaluate(model, g, features, labels, test_nid)

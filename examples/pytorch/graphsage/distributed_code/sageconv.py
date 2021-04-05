@@ -9,7 +9,7 @@ from dgl.utils import expand_as_pair, check_eq_shape
 import math
 import torch.distributed as dist
 
-def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, inputs):
+def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
   # node_count = graph.number_of_nodes()
   node_count = graph.size(0)
 #   print('---------',inputs.shape[1], ampbyp)
@@ -30,7 +30,7 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, inputs):
   chunk = self.size // (self.replication ** 2)
 
   for i in range(stages):
-    q = (rank_col * chunk)*self.replication + i*self.replication + rank_col
+    q = (rank_col * chunk + i) * self.replication + rank_col
     q_c = q // self.replication
     am_partid = (rank_col * chunk) + i
 
@@ -40,11 +40,12 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, inputs):
       inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
 
     inputs_recv = inputs_recv.contiguous()
-    # print("==================inp ",inputs_recv.shape)
-    # print("========= col ", q , self.col_groups[rank_col])
     dist.broadcast(inputs_recv, src=q, group=self.col_groups[rank_col])
     
-    z_loc = agg(ampbyp_dgl[am_partid], (inputs_recv, z_loc))
+    start_dst_vtx = (rank_c * n_per_proc)
+    end_dst_vtx = start_dst_vtx + ampbyp[0].size(0)
+    degrees_loc = degrees[start_dst_vtx:end_dst_vtx]
+    z_loc += agg(ampbyp_dgl[am_partid], (inputs_recv, z_loc), degrees_loc)
   
   z_loc = z_loc.contiguous()
   dist.all_reduce(z_loc, op=dist.reduce_op.SUM, group=self.row_groups[rank_c])
@@ -65,18 +66,19 @@ class SAGEConvAgg(nn.Module):
 
         self._agg_loc = SAGEConvAggLoc(in_feats, aggregator_type)
 
-    def forward(self, graphsage, graph, ampbyp, ampbyp_dgl, inputs):
-        return SAGEConvAggFn.apply(graphsage, graph, ampbyp, ampbyp_dgl, self._agg_loc, inputs)
+    def forward(self, graphsage, graph, ampbyp, ampbyp_dgl, degrees, inputs):
+        return SAGEConvAggFn.apply(graphsage, graph, ampbyp, ampbyp_dgl, self._agg_loc, degrees, inputs)
 
 
 class SAGEConvAggFn(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, self, graph, ampbyp, ampbyp_dgl, agg, inputs):
-        z = broad_func(self, graph, ampbyp, ampbyp_dgl, agg, inputs)
+    def forward(ctx, self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
+        z = broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs)
 
         ctx.save_for_backward(inputs)
         ctx.ampbyp = ampbyp
         ctx.ampbyp_dgl = ampbyp_dgl
+        ctx.degrees = degrees
         ctx.graph = graph
         ctx.agg = agg
         ctx.self = self
@@ -89,12 +91,13 @@ class SAGEConvAggFn(torch.autograd.Function):
         agg = ctx.agg
         ampbyp = ctx.ampbyp
         ampbyp_dgl = ctx.ampbyp_dgl
+        degrees = ctx.degrees
         inputs = ctx.saved_tensors
         self = ctx.self
 
-        dz = broad_func(self, graph, ampbyp, ampbyp_dgl, agg, grad_output)
+        dz = broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, grad_output)
 
-        return None, None, None, None, None, dz
+        return None, None, None, None, None, None, dz
 
 # class SAGEConvAgg(nn.Module):
 class SAGEConvAggLoc(nn.Module):
@@ -125,7 +128,7 @@ class SAGEConvAggLoc(nn.Module):
         _, (rst, _) = self.lstm(m, h)
         return {'neigh': rst.squeeze(0)}
     
-    def forward(self, graph, feat):
+    def forward(self, graph, feat, degrees):
         r"""
 
         Description
@@ -180,7 +183,8 @@ class SAGEConvAggLoc(nn.Module):
                 graph.dstdata['h'] = feat_dst     # same as above if homogeneous
                 graph.update_all(fn.copy_src('h', 'm'), fn.sum('m', 'neigh'))
                 # divide in_degrees
-                degs = graph.in_degrees().to(feat_dst)
+                # degs = graph.in_degrees().to(feat_dst)
+                degs = degrees.to(feat_dst)
                 h_neigh = (graph.dstdata['neigh'] + graph.dstdata['h']) / (degs.unsqueeze(-1) + 1)
             elif self._aggre_type == 'pool':
                 graph.srcdata['h'] = F.relu(self.fc_pool(feat_src))
