@@ -127,19 +127,20 @@ def main(args):
         if epoch >= 3:
             t0 = time.time()
         # forward
+        start_forward = time.time()
         logits = model(g, features)
-        print(f"logits: {logits}")
+        stop_forward = time.time()
         loss = F.cross_entropy(logits[train_nid], labels[train_nid])
 
         optimizer.zero_grad()
+        start_backward = time.time()
         loss.backward()
-        for name, param in model.named_parameters():
-            if param.grad is not None:
-                print(f"name: {name} param.grad: {param.grad}")
+        stop_backward = time.time()
         optimizer.step()
 
         if epoch >= 3:
             dur.append(time.time() - t0)
+            print(f"epoch_time: {dur[-1]} forward_time: {stop_forward - start_forward} backward_time: {stop_backward - start_backward}")
 
         acc = evaluate(model, g, features, labels, val_nid)
         print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "

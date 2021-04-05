@@ -320,7 +320,7 @@ def main(args):
         print(f"i: {i} ampbyp.size: {ampbyp[i].size()}")
 
     degrees = g.in_degrees()
-    features.requires_grad = True
+    # features.requires_grad = True
     # create GraphSAGE model
     torch.manual_seed(0)
     model = GraphSAGE(in_feats,
@@ -361,7 +361,9 @@ def main(args):
             t0 = time.time()
 
         # forward
+        start_forward = time.time()
         logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
+        stop_forward = time.time()
 
         loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids]) 
         loss_recv = []
@@ -373,12 +375,15 @@ def main(args):
         loss = sum(loss_recv) / train_nid.size(0)
 
         optimizer.zero_grad()
+        start_backward = time.time()
         loss.backward()
+        stop_backward = time.time()
 
         optimizer.step()
 
         if epoch >= 3:
             dur.append(time.time() - t0)
+            print(f"us epoch_time: {dur[-1]} forward_time: {stop_forward - start_forward} backward_time: {stop_backward - start_backward}")
 
         acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
         print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
