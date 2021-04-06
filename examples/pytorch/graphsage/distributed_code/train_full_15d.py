@@ -79,6 +79,9 @@ class GraphSAGE(nn.Module):
     for l, (agg_layer, mlp_layer) in enumerate(zip(self.agg_layers, self.mlp_layers)):
       z = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, h)
       h = mlp_layer(graph, z, z)
+      if l != len(self.agg_layers) - 1:
+        h = self.activation(h)
+        h = self.dropout(h)
     return h
 
 # Normalize all elements according to KW's normalization rule

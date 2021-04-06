@@ -43,9 +43,9 @@ class GraphSAGE(nn.Module):
         h = self.dropout(inputs)
         for l, layer in enumerate(self.layers):
             h = layer(graph, h)
-            # if l != len(self.layers) - 1:
-            #     h = self.activation(h)
-            #     h = self.dropout(h)
+            if l != len(self.layers) - 1:
+                h = self.activation(h)
+                h = self.dropout(h)
         return h
 
 
