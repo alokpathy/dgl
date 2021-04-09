@@ -52,6 +52,13 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
 
   return z_loc
 
+def outer_product(mata, matb, group):
+    matc = torch.mm(mata, matb)
+    # reduction on grad_weight low-rank matrices
+    dist.all_reduce(matc, op=dist.reduce_op.SUM, group=group)
+
+    return matc
+
 class SAGEConvAgg(nn.Module):
     def __init__(self,
                 in_feats,
@@ -250,7 +257,7 @@ class SAGEConvMLP(nn.Module):
             nn.init.xavier_uniform_(self.fc_self.weight, gain=gain)
         nn.init.xavier_uniform_(self.fc_neigh.weight, gain=gain)
 
-    def forward(self, graph, feat, h_neigh):
+    def forward(self, graphsage, graph, feat, h_neigh):
         r"""
 
         Description
@@ -278,7 +285,7 @@ class SAGEConvMLP(nn.Module):
         # GraphSAGE GCN does not require fc_self.
         if self._aggre_type == 'gcn':
             # rst = self.fc_neigh(h_neigh)
-            rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias)
+            rst = SAGEConvMLPFn.apply(graphsage, h_neigh, self.fc_neigh.weight, self.fc_neigh.bias)
         else:
             rst = self.fc_self(h_self) + self.fc_neigh(h_neigh)
         # activation
@@ -296,8 +303,9 @@ class SAGEConvMLPFn(torch.autograd.Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, weight, bias=None):
+    def forward(ctx, self, input, weight, bias=None):
         ctx.save_for_backward(input, weight, bias)
+        ctx.self = self
         output = input.mm(weight.t())
         if bias is not None:
             output += bias.unsqueeze(0).expand_as(output)
@@ -312,6 +320,7 @@ class SAGEConvMLPFn(torch.autograd.Function):
         # ignored, the return statement is simple even when the function has
         # optional inputs.
         input, weight, bias = ctx.saved_tensors
+        self = ctx.self
         grad_input = grad_weight = grad_bias = None
 
         # These needs_input_grad checks are optional and there only to
@@ -321,8 +330,15 @@ class SAGEConvMLPFn(torch.autograd.Function):
         if ctx.needs_input_grad[0]:
             grad_input = grad_output.mm(weight)
         if ctx.needs_input_grad[1]:
-            grad_weight = grad_output.t().mm(input)
+            print(f"grad_output.t().size: {grad_output.t().size()}")
+            print(f"input.size: {input.size()}")
+            # grad_weight = grad_output.t().mm(input)
+            rank_col = self.rank % self.replication
+            grad_weight = outer_product(grad_output.t(), input, self.col_groups[rank_col])
+
         if bias is not None and ctx.needs_input_grad[2]:
             grad_bias = grad_output.sum(0)
+            rank_col = self.rank % self.replication
+            dist.all_reduce(grad_bias, op=dist.reduce_op.SUM, group=self.col_groups[rank_col])
 
-        return grad_input, grad_weight, grad_bias
+        return None, grad_input, grad_weight, grad_bias

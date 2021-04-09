@@ -165,3 +165,6 @@ config.cmake
 # test output files
 examples/pytorch/graphsage/*.txt 
 examples/pytorch/graphsage/distributed_code/*.txt 
+
+# dataset
+examples/pytorch/graphsage/dataset

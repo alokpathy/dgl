@@ -16,6 +16,8 @@ from dgl import DGLGraph
 from dgl.data import register_data_args, load_data
 from dgl.nn.pytorch.conv import SAGEConv
 
+import ogb
+from ogb.nodeproppred import DglNodePropPredDataset
 
 class GraphSAGE(nn.Module):
     def __init__(self,
@@ -61,16 +63,35 @@ def evaluate(model, graph, features, labels, nid):
 
 def main(args):
     # load and preprocess dataset
-    data = load_data(args)
-    g = data[0]
+    if args.dataset.startswith("ogbn"):
+        data = DglNodePropPredDataset(name=args.dataset)
+        
+        split_idx = data.get_idx_split()
+        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
+        g, labels = data[0]
+        n_edges = g.number_of_edges()
+
+        train_mask = torch.zeros(g.num_nodes())
+        val_mask = torch.zeros(g.num_nodes())
+        test_mask = torch.zeros(g.num_nodes())
+
+        train_mask = train_mask.scatter_(0, train_idx, True)
+        val_mask = val_mask.scatter_(0, valid_idx, True)
+        test_mask = test_mask.scatter_(0, test_idx, True)
+
+        labels = torch.max(labels, 1)[0]
+    else:
+        data = load_data(args)
+        g = data[0]
+        labels = g.ndata['label']
+        train_mask = g.ndata['train_mask']
+        val_mask = g.ndata['val_mask']
+        test_mask = g.ndata['test_mask']
+        n_edges = data.graph.number_of_edges()
+
     features = g.ndata['feat']
-    labels = g.ndata['label']
-    train_mask = g.ndata['train_mask']
-    val_mask = g.ndata['val_mask']
-    test_mask = g.ndata['test_mask']
     in_feats = features.shape[1]
     n_classes = data.num_classes
-    n_edges = data.graph.number_of_edges()
     print("""----Data statistics------'
       #Edges %d
       #Classes %d

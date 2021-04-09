@@ -17,9 +17,10 @@ import torch.nn.functional as F
 import dgl
 from dgl import DGLGraph
 from dgl.data import register_data_args, load_data
-#from dgl.nn.pytorch.conv import SAGEConvAgg, SAGEConvMLP
 from sageconv import SAGEConvAgg, SAGEConvMLP
-# import torch_ccl
+
+import ogb
+from ogb.nodeproppred import DglNodePropPredDataset
 
 import socket
 
@@ -78,7 +79,7 @@ class GraphSAGE(nn.Module):
     h = self.dropout(inputs)
     for l, (agg_layer, mlp_layer) in enumerate(zip(self.agg_layers, self.mlp_layers)):
       z = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, h)
-      h = mlp_layer(graph, z, z)
+      h = mlp_layer(self, graph, z, z)
       if l != len(self.agg_layers) - 1:
         h = self.activation(h)
         h = self.dropout(h)
@@ -210,6 +211,7 @@ def evaluate(model, graph, features, labels, nid, ampbyp, ampbyp_dgl, degrees, g
         logits = torch.cat(logits_recv)
 
         logits = logits[nid]
+        print(f"eval logits: {logits}")
         labels = labels[nid]
         _, indices = torch.max(logits, dim=1)
         correct = torch.sum(indices == labels)
@@ -217,16 +219,35 @@ def evaluate(model, graph, features, labels, nid, ampbyp, ampbyp_dgl, degrees, g
 
 def main(args):
     # load and preprocess dataset
-    data = load_data(args)
-    g = data[0]
+    if args.dataset.startswith("ogbn"):
+        data = DglNodePropPredDataset(name=args.dataset)
+        
+        split_idx = data.get_idx_split()
+        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
+        g, labels = data[0]
+        n_edges = g.number_of_edges()
+
+        train_mask = torch.zeros(g.num_nodes())
+        val_mask = torch.zeros(g.num_nodes())
+        test_mask = torch.zeros(g.num_nodes())
+
+        train_mask = train_mask.scatter_(0, train_idx, True)
+        val_mask = val_mask.scatter_(0, valid_idx, True)
+        test_mask = test_mask.scatter_(0, test_idx, True)
+
+        labels = torch.max(labels, 1)[0]
+    else:
+        data = load_data(args)
+        g = data[0]
+        labels = g.ndata['label']
+        train_mask = g.ndata['train_mask']
+        val_mask = g.ndata['val_mask']
+        test_mask = g.ndata['test_mask']
+        n_edges = data.graph.number_of_edges()
+
     features = g.ndata['feat']
-    labels = g.ndata['label']
-    train_mask = g.ndata['train_mask']
-    val_mask = g.ndata['val_mask']
-    test_mask = g.ndata['test_mask']
     in_feats = features.shape[1]
     n_classes = data.num_classes
-    n_edges = data.graph.number_of_edges()
     print("""----Data statistics------'
       #Edges %d
       #Classes %d
@@ -368,14 +389,39 @@ def main(args):
         logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
         stop_forward = time.time()
 
-        loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids]) 
-        loss_recv = []
-        loss = loss * rank_train_nids.size(0)
-        for i in range(size):
-            loss_recv.append(torch.Tensor(loss.size()))
-        dist.all_gather(loss_recv, loss, group)
-        loss_recv[rank] = loss
-        loss = sum(loss_recv) / train_nid.size(0)
+        print(f"rank: {rank} rank_train_nids: {rank_train_nids}")
+        print(f"rank: {rank} logits[rank]: {logits[rank_train_nids]} labels[rank]: {label_rank[rank_train_nids]}")
+        # all-gather logits across ranks
+        logits_recv = []
+        for i in range(len(ampbyp)):
+            logits_recv.append(torch.FloatTensor(ampbyp[0].size(1), logits.size(1)))
+
+        if logits.size(0) != ampbyp[0].size(1):
+            pad_row = ampbyp[0].size(1) - logits.size(0)
+            logits = torch.cat((logits, torch.FloatTensor(pad_row, logits.size(1))), dim=0)
+
+        dist.all_gather(logits_recv, logits, col_groups[0])
+        logits_recv[rank_c] = logits
+
+        padding = g_loc.size(0) - ampbyp[0].size(1) * (len(ampbyp) - 1)
+        logits_recv[-1] = logits_recv[-1][:padding,:]
+
+        logits = torch.cat(logits_recv)
+        loss = F.cross_entropy(logits[train_nid], labels[train_nid]) 
+
+        # loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids]) 
+        # if rank_train_nids.size(0) == 0:
+        #     loss = F.cross_entropy(logits[rank_train_nids], labels[rank_train_nids], reduction="sum") 
+        # else:
+        #     loss = F.cross_entropy(logits[rank_train_nids], labels[rank_train_nids], reduction="sum") 
+
+        # loss_recv = []
+        # # loss = loss * rank_train_nids.size(0)
+        # for i in range(size // args.replication):
+        #     loss_recv.append(torch.Tensor(loss.size()))
+        # dist.all_gather(loss_recv, loss, col_groups[0])
+        # loss_recv[rank_c] = loss
+        # loss = sum(loss_recv) / train_nid.size(0)
 
         optimizer.zero_grad()
         start_backward = time.time()
@@ -393,11 +439,10 @@ def main(args):
               "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
                                             acc, n_edges / np.mean(dur) / 1000), flush=True)
 
-    rank_test_mask = torch.split(test_mask, logits.size(0), dim=0)[rank_c]
-    test_nids = rank_test_mask.nonzero().squeeze()
     print()
     # acc = evaluate(model, g, features, labels, test_nids, ampbyp)
     # acc = evaluate(model, g_loc, features_loc, labels, test_nids, ampbyp, ampbyp_dgl, degrees)
+    print(f"rank: {rank} almost final logits: {logits}")
     acc = evaluate(model, g_loc, features_loc, labels, test_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
     print("Test Accuracy {:.4f}".format(acc))
 
