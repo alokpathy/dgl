@@ -211,7 +211,6 @@ def evaluate(model, graph, features, labels, nid, ampbyp, ampbyp_dgl, degrees, g
         logits = torch.cat(logits_recv)
 
         logits = logits[nid]
-        print(f"eval logits: {logits}")
         labels = labels[nid]
         _, indices = torch.max(logits, dim=1)
         correct = torch.sum(indices == labels)
@@ -364,7 +363,6 @@ def main(args):
     if cuda:
         model.cuda()
 
-    print(f"is cuda: {next(model.parameters()).is_cuda}:")
     # use optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -389,39 +387,14 @@ def main(args):
         logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
         stop_forward = time.time()
 
-        print(f"rank: {rank} rank_train_nids: {rank_train_nids}")
-        print(f"rank: {rank} logits[rank]: {logits[rank_train_nids]} labels[rank]: {label_rank[rank_train_nids]}")
-        # all-gather logits across ranks
-        logits_recv = []
-        for i in range(len(ampbyp)):
-            logits_recv.append(torch.FloatTensor(ampbyp[0].size(1), logits.size(1)))
+        loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids], reduction="sum") 
 
-        if logits.size(0) != ampbyp[0].size(1):
-            pad_row = ampbyp[0].size(1) - logits.size(0)
-            logits = torch.cat((logits, torch.FloatTensor(pad_row, logits.size(1))), dim=0)
-
-        dist.all_gather(logits_recv, logits, col_groups[0])
-        logits_recv[rank_c] = logits
-
-        padding = g_loc.size(0) - ampbyp[0].size(1) * (len(ampbyp) - 1)
-        logits_recv[-1] = logits_recv[-1][:padding,:]
-
-        logits = torch.cat(logits_recv)
-        loss = F.cross_entropy(logits[train_nid], labels[train_nid]) 
-
-        # loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids]) 
-        # if rank_train_nids.size(0) == 0:
-        #     loss = F.cross_entropy(logits[rank_train_nids], labels[rank_train_nids], reduction="sum") 
-        # else:
-        #     loss = F.cross_entropy(logits[rank_train_nids], labels[rank_train_nids], reduction="sum") 
-
-        # loss_recv = []
-        # # loss = loss * rank_train_nids.size(0)
-        # for i in range(size // args.replication):
-        #     loss_recv.append(torch.Tensor(loss.size()))
-        # dist.all_gather(loss_recv, loss, col_groups[0])
-        # loss_recv[rank_c] = loss
-        # loss = sum(loss_recv) / train_nid.size(0)
+        loss_recv = []
+        for i in range(size // args.replication):
+            loss_recv.append(torch.Tensor(loss.size()))
+        dist.all_gather(loss_recv, loss, col_groups[0])
+        loss_recv[rank_c] = loss
+        loss = sum(loss_recv) / train_nid.size(0)
 
         optimizer.zero_grad()
         start_backward = time.time()
@@ -432,7 +405,6 @@ def main(args):
 
         if epoch >= 3:
             dur.append(time.time() - t0)
-            print(f"us epoch_time: {dur[-1]} forward_time: {stop_forward - start_forward} backward_time: {stop_backward - start_backward}")
 
         acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
         print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
@@ -440,9 +412,6 @@ def main(args):
                                             acc, n_edges / np.mean(dur) / 1000), flush=True)
 
     print()
-    # acc = evaluate(model, g, features, labels, test_nids, ampbyp)
-    # acc = evaluate(model, g_loc, features_loc, labels, test_nids, ampbyp, ampbyp_dgl, degrees)
-    print(f"rank: {rank} almost final logits: {logits}")
     acc = evaluate(model, g_loc, features_loc, labels, test_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
     print("Test Accuracy {:.4f}".format(acc))
 

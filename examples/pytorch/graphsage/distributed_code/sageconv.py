@@ -285,7 +285,8 @@ class SAGEConvMLP(nn.Module):
         # GraphSAGE GCN does not require fc_self.
         if self._aggre_type == 'gcn':
             # rst = self.fc_neigh(h_neigh)
-            rst = SAGEConvMLPFn.apply(graphsage, h_neigh, self.fc_neigh.weight, self.fc_neigh.bias)
+            rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias, graphsage)
+            # rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias)
         else:
             rst = self.fc_self(h_self) + self.fc_neigh(h_neigh)
         # activation
@@ -303,7 +304,7 @@ class SAGEConvMLPFn(torch.autograd.Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, self, input, weight, bias=None):
+    def forward(ctx, input, weight, bias, self):
         ctx.save_for_backward(input, weight, bias)
         ctx.self = self
         output = input.mm(weight.t())
@@ -330,9 +331,7 @@ class SAGEConvMLPFn(torch.autograd.Function):
         if ctx.needs_input_grad[0]:
             grad_input = grad_output.mm(weight)
         if ctx.needs_input_grad[1]:
-            print(f"grad_output.t().size: {grad_output.t().size()}")
-            print(f"input.size: {input.size()}")
-            # grad_weight = grad_output.t().mm(input)
+            grad_weight = grad_output.t().mm(input)
             rank_col = self.rank % self.replication
             grad_weight = outer_product(grad_output.t(), input, self.col_groups[rank_col])
 
@@ -341,4 +340,5 @@ class SAGEConvMLPFn(torch.autograd.Function):
             rank_col = self.rank % self.replication
             dist.all_reduce(grad_bias, op=dist.reduce_op.SUM, group=self.col_groups[rank_col])
 
-        return None, grad_input, grad_weight, grad_bias
+        return grad_input, grad_weight, grad_bias, None
+        # return grad_input, grad_weight, grad_bias
