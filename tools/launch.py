@@ -97,6 +97,7 @@ def submit_jobs(args, udf_command):
             new_udf_command = udf_command.replace('python', 'python ' + new_torch_cmd)
         cmd = client_cmd + ' ' + new_udf_command
         cmd = 'cd ' + str(args.workspace) + '; ' + cmd
+        print(f"cmd: {cmd}", flush=True)
         execute_remote(cmd, ip, args.ssh_port, thread_list)
 
     for thread in thread_list:

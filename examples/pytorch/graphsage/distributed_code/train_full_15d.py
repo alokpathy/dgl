@@ -24,6 +24,8 @@ from ogb.nodeproppred import DglNodePropPredDataset
 
 import socket
 
+import copy
+
 def get_proc_groups(rank, size, replication):
     rank_c = rank // replication
      
@@ -58,6 +60,14 @@ class GraphSAGE(nn.Module):
     self.group = group
     self.row_groups = row_groups
     self.col_groups = col_groups
+    self.timings = dict()
+    
+    self.timings["total"] = 0.0
+    self.timings["scomp"] = 0.0
+    self.timings["dcomp"] = 0.0
+    self.timings["bcast"] = 0.0
+    self.timings["reduce"] = 0.0
+    self.timings["op"] = 0.0
 
     # input layer
     self.agg_layers.append(SAGEConvAgg(in_feats, aggregator_type))
@@ -189,96 +199,120 @@ def oned_partition(rank, size, replication, inputs, adj_matrix, normalization):
     return inputs_loc, adj_matrix_loc, am_pbyp
 
 
-def evaluate(model, graph, features, labels, nid, ampbyp, ampbyp_dgl, degrees, group):
+def evaluate(model, graph, features, labels, nid, nid_count, ampbyp, ampbyp_dgl, degrees, group):
     model.eval()
     with torch.no_grad():
+        non_eval_timings = copy.deepcopy(model.timings)
         logits = model(graph, features, ampbyp, ampbyp_dgl, degrees)
+        model.timings = non_eval_timings # don't include evaluation timings
 
-        # all-gather logits across ranks
-        logits_recv = []
-        for i in range(len(ampbyp)):
-            logits_recv.append(torch.FloatTensor(ampbyp[0].size(1), logits.size(1)))
+        # # all-gather logits across ranks
+        # logits_recv = []
+        # for i in range(len(ampbyp)):
+        #     logits_recv.append(torch.FloatTensor(ampbyp[0].size(1), logits.size(1)))
 
-        if logits.size(0) != ampbyp[0].size(1):
-            pad_row = ampbyp[0].size(1) - logits.size(0)
-            logits = torch.cat((logits, torch.FloatTensor(pad_row, logits.size(1))), dim=0)
+        # if logits.size(0) != ampbyp[0].size(1):
+        #     pad_row = ampbyp[0].size(1) - logits.size(0)
+        #     logits = torch.cat((logits, torch.FloatTensor(pad_row, logits.size(1))), dim=0)
 
-        dist.all_gather(logits_recv, logits, group)
+        # dist.all_gather(logits_recv, logits, group)
 
-        padding = graph.size(0) - ampbyp[0].size(1) * (len(ampbyp) - 1)
-        logits_recv[-1] = logits_recv[-1][:padding,:]
+        # padding = graph.size(0) - ampbyp[0].size(1) * (len(ampbyp) - 1)
+        # logits_recv[-1] = logits_recv[-1][:padding,:]
 
-        logits = torch.cat(logits_recv)
+        # logits = torch.cat(logits_recv)
 
         logits = logits[nid]
         labels = labels[nid]
         _, indices = torch.max(logits, dim=1)
         correct = torch.sum(indices == labels)
-        return correct.item() * 1.0 / len(labels)
+
+        dist.all_reduce(correct, op=dist.reduce_op.SUM, group=group)
+        return correct.item() * 1.0 / nid_count
 
 def main(args):
     # load and preprocess dataset
-    if args.dataset.startswith("ogbn"):
-        data = DglNodePropPredDataset(name=args.dataset)
-        
-        split_idx = data.get_idx_split()
-        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
-        g, labels = data[0]
+    if "papers100M" not in args.dataset:
+        if args.dataset.startswith("ogbn"):
+            data = DglNodePropPredDataset(name=args.dataset)
+            
+            split_idx = data.get_idx_split()
+            train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
+            g, labels = data[0]
+            n_edges = g.number_of_edges()
+
+            train_mask = torch.zeros(g.num_nodes())
+            val_mask = torch.zeros(g.num_nodes())
+            test_mask = torch.zeros(g.num_nodes())
+
+            train_mask = train_mask.scatter_(0, train_idx, True)
+            val_mask = val_mask.scatter_(0, valid_idx, True)
+            test_mask = test_mask.scatter_(0, test_idx, True)
+
+            labels = torch.max(labels, 1)[0]
+        else:
+            data = load_data(args)
+            g = data[0]
+            labels = g.ndata['label']
+            train_mask = g.ndata['train_mask']
+            val_mask = g.ndata['val_mask']
+            test_mask = g.ndata['test_mask']
+            n_edges = data.graph.number_of_edges()
+
+        print(f"Loaded dataset {args.dataset}", flush=True)
+        features = g.ndata['feat']
+        in_feats = features.shape[1]
+        n_classes = data.num_classes
+        print("""----Data statistics------'
+          #Edges %d
+          #Classes %d
+          #Train samples %d
+          #Val samples %d
+          #Test samples %d""" %
+              (n_edges, n_classes,
+               train_mask.int().sum().item(),
+               val_mask.int().sum().item(),
+               test_mask.int().sum().item()), flush=True)
+
+        if args.gpu < 0:
+            cuda = False
+        else:
+            cuda = True
+            torch.cuda.set_device(args.gpu)
+            features = features.cuda()
+            labels = labels.cuda()
+            train_mask = train_mask.cuda()
+            val_mask = val_mask.cuda()
+            test_mask = test_mask.cuda()
+            print("use cuda:", args.gpu)
+
+        train_nid = train_mask.nonzero().squeeze()
+        val_nid = val_mask.nonzero().squeeze()
+        test_nid = test_mask.nonzero().squeeze()
+
+        # graph preprocess and calculate normalization factor
+        g = dgl.remove_self_loop(g)
         n_edges = g.number_of_edges()
-
-        train_mask = torch.zeros(g.num_nodes())
-        val_mask = torch.zeros(g.num_nodes())
-        test_mask = torch.zeros(g.num_nodes())
-
-        train_mask = train_mask.scatter_(0, train_idx, True)
-        val_mask = val_mask.scatter_(0, valid_idx, True)
-        test_mask = test_mask.scatter_(0, test_idx, True)
-
-        labels = torch.max(labels, 1)[0]
+        if cuda:
+            g = g.int().to(args.gpu)
     else:
-        data = load_data(args)
-        g = data[0]
-        labels = g.ndata['label']
-        train_mask = g.ndata['train_mask']
-        val_mask = g.ndata['val_mask']
-        test_mask = g.ndata['test_mask']
-        n_edges = data.graph.number_of_edges()
+        path = "./dataset/ogbn_papers100M/partitions"
+        train_nid = torch.load("{}/train_nid.pt".format(path))
+        val_nid = torch.load("{}/val_nid.pt".format(path))
+        test_nid = torch.load("{}/test_nid.pt".format(path))
+        labels = torch.load("{}/labels.pt".format(path))
+        degrees = torch.load("{}/degrees.pt".format(path))
 
-    features = g.ndata['feat']
-    in_feats = features.shape[1]
-    n_classes = data.num_classes
-    print("""----Data statistics------'
-      #Edges %d
-      #Classes %d
-      #Train samples %d
-      #Val samples %d
-      #Test samples %d""" %
-          (n_edges, n_classes,
-           train_mask.int().sum().item(),
-           val_mask.int().sum().item(),
-           test_mask.int().sum().item()))
+        num_nodes = 111059956 
+        train_mask = torch.zeros(num_nodes)
+        val_mask = torch.zeros(num_nodes)
+        test_mask = torch.zeros(num_nodes)
+        train_mask = train_mask.scatter_(0, train_nid, True)
+        val_mask = val_mask.scatter_(0, val_nid, True)
+        test_mask = test_mask.scatter_(0, test_nid, True)
 
-    if args.gpu < 0:
-        cuda = False
-    else:
-        cuda = True
-        torch.cuda.set_device(args.gpu)
-        features = features.cuda()
-        labels = labels.cuda()
-        train_mask = train_mask.cuda()
-        val_mask = val_mask.cuda()
-        test_mask = test_mask.cuda()
-        print("use cuda:", args.gpu)
-
-    train_nid = train_mask.nonzero().squeeze()
-    val_nid = val_mask.nonzero().squeeze()
-    test_nid = test_mask.nonzero().squeeze()
-
-    # graph preprocess and calculate normalization factor
-    g = dgl.remove_self_loop(g)
-    n_edges = g.number_of_edges()
-    if cuda:
-        g = g.int().to(args.gpu)
+        in_feats = 128
+        n_classes = 172
 
     # Initialize distributed environment with SLURM
     if "SLURM_PROCID" in os.environ.keys():
@@ -299,7 +333,7 @@ def main(args):
     dist.init_process_group(backend=args.dist_backend)
     rank = dist.get_rank()
     size = dist.get_world_size()
-    print(f"hostname: {socket.gethostname()} rank: {rank} size: {size}")
+    print(f"hostname: {socket.gethostname()} rank: {rank} size: {size}", flush=True)
 
     # if args.dist_url == "env://" and args.world_size == -1:
     #     args.world_size = int(os.environ.get("PMI_SIZE", -1))
@@ -317,21 +351,61 @@ def main(args):
     # rank = args.rank
     # size = args.world_size
 
-    print("Processes: " + str(size))
+    print("Processes: " + str(size), flush=True)
     device = torch.device('cpu')
 
     group = dist.new_group(list(range(size)))
     row_groups, col_groups = get_proc_groups(rank, size, args.replication)
 
-    # Partition input graph and features
-    edges = g.all_edges() # Convert DGLGraph to COO for partitioning
-    edges = torch.stack([edges[0], edges[1]], dim=0)
-    features_loc, g_loc, ampbyp = oned_partition(rank, size, args.replication, features, edges, 
-                                                        args.normalization)
+    if "papers100M" not in args.dataset:
+        # Partition input graph and features
+        edges = g.all_edges() # Convert DGLGraph to COO for partitioning
+        degrees = g.in_degrees()
+        edges = torch.stack([edges[0], edges[1]], dim=0)
+        features_loc, g_loc, ampbyp = oned_partition(rank, size, args.replication, features, edges, 
+                                                            args.normalization)
+
+        # size = 8
+        # for rank in range(size):
+        #     print(f"Partitioning on rank {rank}...", flush=True)
+        #     features_loc, g_loc, ampbyp = oned_partition(rank, size, args.replication, features, edges, 
+        #                                                         args.normalization)
+        #     print(f"Done partitioning on rank {rank}", flush=True)
+        #     features_loc = features_loc.clone()
+        #     g_loc = g_loc.clone()
+        #     for i in range(len(ampbyp)):
+        #         ampbyp[i] = ampbyp[i].clone()
+        #     path = "./dataset/ogbn_papers100M/partitions/proc{}".format(size)
+        #     torch.save(features_loc, "{}/rank{}_features.pt".format(path, rank))
+        #     torch.save(g_loc, "{}/rank{}_graph.pt".format(path, rank))
+        #     torch.save(ampbyp, "{}/rank{}_ampbyp.pt".format(path, rank))
+        #     print(f"Done saving on rank {rank}", flush=True)
+    else:
+        path = "./dataset/ogbn_papers100M/partitions/proc{}".format(size)
+        features_loc = torch.load("{}/rank{}_features.pt".format(path, rank))
+        g_loc = torch.load("{}/rank{}_graph.pt".format(path, rank))
+        ampbyp = torch.load("{}/rank{}_ampbyp.pt".format(path, rank))
+
     # print("------------------->",ampbyp)
     # Convert COO back to DGLGraph
     # Uses hardcoded types, doesn't include all the metadata in original g
     # g_loc = dgl.heterograph({("_N", "_N", "_E"): (g_loc._indices()[0], g_loc._indices()[1])}) 
+
+    if args.gpu < 0:
+        cuda = False
+    else:
+        cuda = True
+        torch.cuda.set_device(args.gpu)
+        features_loc = features_loc.cuda()
+        g_loc = g_loc.cuda()
+        labels = labels.cuda()
+        train_nid = train_nid.cuda()
+        val_nid = val_nid.cuda()
+        test_nid = test_nid.cuda()
+
+        for i in range(len(ampbyp)):
+            ampbyp[i] = ampbyp[i].cuda()
+        print("use cuda:", args.gpu)
 
     ampbyp_dgl = []
     for i in range(len(ampbyp)):
@@ -342,7 +416,6 @@ def main(args):
                                             num_dst_nodes=ampbyp[i].size(0)))
         print(f"i: {i} ampbyp.size: {ampbyp[i].size()}")
 
-    degrees = g.in_degrees()
     # features.requires_grad = True
     # create GraphSAGE model
     torch.manual_seed(0)
@@ -371,23 +444,28 @@ def main(args):
 
     rank_train_mask = torch.split(train_mask, n_per_proc, dim=0)[rank_c]
     rank_val_mask = torch.split(val_mask, n_per_proc, dim=0)[rank_c]
-    label_rank = torch.split(labels, n_per_proc, dim=0)[rank_c]
-    rank_train_nids= rank_train_mask.nonzero().squeeze()
-    val_nids = rank_val_mask.nonzero().squeeze()
+    rank_test_mask = torch.split(test_mask, n_per_proc, dim=0)[rank_c]
+    labels_rank = torch.split(labels, n_per_proc, dim=0)[rank_c]
+    rank_train_nids = rank_train_mask.nonzero().squeeze()
+    rank_val_nids = rank_val_mask.nonzero().squeeze()
+    rank_test_nids = rank_test_mask.nonzero().squeeze()
 
     # initialize graph
     dur = []
+    total_start = time.time()
     for epoch in range(args.n_epochs):
+        if epoch == 1: # skip first epoch times
+            total_start = time.time()
         model.train()
-        if epoch >= 3:
-            t0 = time.time()
+        # if epoch >= 3:
+        #     t0 = time.time()
 
         # forward
         start_forward = time.time()
         logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
         stop_forward = time.time()
 
-        loss = F.cross_entropy(logits[rank_train_nids], label_rank[rank_train_nids], reduction="sum") 
+        loss = F.cross_entropy(logits[rank_train_nids], labels_rank[rank_train_nids].long(), reduction="sum") 
 
         loss_recv = []
         for i in range(size // args.replication):
@@ -402,18 +480,40 @@ def main(args):
         stop_backward = time.time()
 
         optimizer.step()
+        # model.timings["total"] += time.time() - total_start
 
-        if epoch >= 3:
-            dur.append(time.time() - t0)
+        # if epoch >= 3:
+        #     dur.append(time.time() - t0)
 
-        acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
+        if epoch == 0:
+            # Erase first epoch timings
+            model.timings["total"] = 0.0
+            model.timings["scomp"] = 0.0
+            model.timings["dcomp"] = 0.0
+            model.timings["bcast"] = 0.0
+            model.timings["reduce"] = 0.0
+            model.timings["op"] = 0.0
+
+        # acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
+        acc = evaluate(model, g_loc, features_loc, labels_rank, rank_val_nids, \
+                            val_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
         print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
               "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
                                             acc, n_edges / np.mean(dur) / 1000), flush=True)
 
+    dist.barrier()
+    model.timings["total"] += time.time() - total_start
     print()
-    acc = evaluate(model, g_loc, features_loc, labels, test_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
+    # acc = evaluate(model, g_loc, features_loc, labels, test_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
+    acc = evaluate(model, g_loc, features_loc, labels_rank, rank_test_nids, \
+                        test_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
     print("Test Accuracy {:.4f}".format(acc))
+
+    print(flush=True)
+    dist.barrier()
+    print("Timings")
+    print("rank, total, scomp, dcomp, bcast, reduce, op")
+    print(f"{rank}, {model.timings['total']}, {model.timings['scomp']}, {model.timings['dcomp']}, {model.timings['bcast']}, {model.timings['reduce']}, {model.timings['op']}")
 
 
 if __name__ == '__main__':

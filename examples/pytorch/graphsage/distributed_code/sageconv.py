@@ -8,6 +8,7 @@ from dgl import function as fn
 from dgl.utils import expand_as_pair, check_eq_shape
 import math
 import torch.distributed as dist
+import time
 
 def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
   # node_count = graph.number_of_nodes()
@@ -36,19 +37,26 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
 
     if q == self.rank:
       inputs_recv = inputs.clone()
+      # inputs_recv = inputs
     elif q_c == self.size // self.replication - 1:
       inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
 
     inputs_recv = inputs_recv.contiguous()
+    bcast_start = time.time()
     dist.broadcast(inputs_recv, src=q, group=self.col_groups[rank_col])
+    self.timings["bcast"] += time.time() - bcast_start
     
     start_dst_vtx = (rank_c * n_per_proc)
     end_dst_vtx = start_dst_vtx + ampbyp[0].size(0)
     degrees_loc = degrees[start_dst_vtx:end_dst_vtx]
+    scomp_start = time.time()
     z_loc += agg(ampbyp_dgl[am_partid], (inputs_recv, z_loc), degrees_loc)
+    self.timings["scomp"] += time.time() - scomp_start
   
   z_loc = z_loc.contiguous()
+  reduce_start = time.time()
   dist.all_reduce(z_loc, op=dist.reduce_op.SUM, group=self.row_groups[rank_c])
+  self.timings["reduce"] += time.time() - reduce_start
 
   return z_loc
 
@@ -284,9 +292,7 @@ class SAGEConvMLP(nn.Module):
         
         # GraphSAGE GCN does not require fc_self.
         if self._aggre_type == 'gcn':
-            # rst = self.fc_neigh(h_neigh)
             rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias, graphsage)
-            # rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias)
         else:
             rst = self.fc_self(h_self) + self.fc_neigh(h_neigh)
         # activation
@@ -329,16 +335,28 @@ class SAGEConvMLPFn(torch.autograd.Function):
         # skip them. Returning gradients for inputs that don't require it is
         # not an error.
         if ctx.needs_input_grad[0]:
+            dcomp_start = time.time()
             grad_input = grad_output.mm(weight)
+            self.timings["dcomp"] += time.time() - dcomp_start
         if ctx.needs_input_grad[1]:
+            dcomp_start = time.time()
             grad_weight = grad_output.t().mm(input)
+            self.timings["dcomp"] += time.time() - dcomp_start
+
             rank_col = self.rank % self.replication
+            op_start = time.time()
             grad_weight = outer_product(grad_output.t(), input, self.col_groups[rank_col])
+            self.timings["op"] += time.time() - op_start
 
         if bias is not None and ctx.needs_input_grad[2]:
+            dcomp_start = time.time()
             grad_bias = grad_output.sum(0)
+            self.timings["dcomp"] += time.time() - dcomp_start
+
             rank_col = self.rank % self.replication
+            op_start = time.time()
             dist.all_reduce(grad_bias, op=dist.reduce_op.SUM, group=self.col_groups[rank_col])
+            self.timings["op"] += time.time() - op_start
 
         return grad_input, grad_weight, grad_bias, None
         # return grad_input, grad_weight, grad_bias

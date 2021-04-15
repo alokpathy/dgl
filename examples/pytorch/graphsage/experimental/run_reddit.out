@@ -1,0 +1,228 @@
+cmd: cd /global/cscratch1/sd/alokt/dgl-intel/dgl/examples/pytorch/graphsage/experimental; DGL_DIST_MODE="distributed" DGL_ROLE=client DGL_NUM_SAMPLER=4 DGL_NUM_CLIENT=20 DGL_CONF_PATH=data/reddit.json DGL_IP_CONFIG=ip_config.txt DGL_NUM_SERVER=1 PYTHONPATH=/opt/mods/lib/python3.6/site-packages:/opt/ovis/lib/python3.6/site-packages /usr/common/software/pytorch/1.7.1/bin/python -m torch.distributed.launch --nproc_per_node=1 --nnodes=4 --node_rank=0 --master_addr=10.128.9.184 --master_port=1234 train_dist.py --graph_name reddit --ip_config ip_config.txt --num_epochs 30 --batch_size 1000
+cmd: cd /global/cscratch1/sd/alokt/dgl-intel/dgl/examples/pytorch/graphsage/experimental; DGL_DIST_MODE="distributed" DGL_ROLE=client DGL_NUM_SAMPLER=4 DGL_NUM_CLIENT=20 DGL_CONF_PATH=data/reddit.json DGL_IP_CONFIG=ip_config.txt DGL_NUM_SERVER=1 PYTHONPATH=/opt/mods/lib/python3.6/site-packages:/opt/ovis/lib/python3.6/site-packages /usr/common/software/pytorch/1.7.1/bin/python -m torch.distributed.launch --nproc_per_node=1 --nnodes=4 --node_rank=1 --master_addr=10.128.9.184 --master_port=1234 train_dist.py --graph_name reddit --ip_config ip_config.txt --num_epochs 30 --batch_size 1000
+cmd: cd /global/cscratch1/sd/alokt/dgl-intel/dgl/examples/pytorch/graphsage/experimental; DGL_DIST_MODE="distributed" DGL_ROLE=client DGL_NUM_SAMPLER=4 DGL_NUM_CLIENT=20 DGL_CONF_PATH=data/reddit.json DGL_IP_CONFIG=ip_config.txt DGL_NUM_SERVER=1 PYTHONPATH=/opt/mods/lib/python3.6/site-packages:/opt/ovis/lib/python3.6/site-packages /usr/common/software/pytorch/1.7.1/bin/python -m torch.distributed.launch --nproc_per_node=1 --nnodes=4 --node_rank=2 --master_addr=10.128.9.184 --master_port=1234 train_dist.py --graph_name reddit --ip_config ip_config.txt --num_epochs 30 --batch_size 1000
+cmd: cd /global/cscratch1/sd/alokt/dgl-intel/dgl/examples/pytorch/graphsage/experimental; DGL_DIST_MODE="distributed" DGL_ROLE=client DGL_NUM_SAMPLER=4 DGL_NUM_CLIENT=20 DGL_CONF_PATH=data/reddit.json DGL_IP_CONFIG=ip_config.txt DGL_NUM_SERVER=1 PYTHONPATH=/opt/mods/lib/python3.6/site-packages:/opt/ovis/lib/python3.6/site-packages /usr/common/software/pytorch/1.7.1/bin/python -m torch.distributed.launch --nproc_per_node=1 --nnodes=4 --node_rank=3 --master_addr=10.128.9.184 --master_port=1234 train_dist.py --graph_name reddit --ip_config ip_config.txt --num_epochs 30 --batch_size 1000
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s9n2 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s10n0 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s9n2 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s10n0 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s9n3 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s9n3 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s9n1 :
+
+***************************************************************************
+                          NOTICE TO USERS
+
+Lawrence Berkeley National Laboratory operates this computer system under 
+contract to the U.S. Department of Energy.  This computer system is the 
+property of the United States Government and is for authorized use only.
+Users (authorized or unauthorized) have no explicit or implicit 
+expectation of privacy.
+
+Any or all uses of this system and all files on this system may be
+intercepted, monitored, recorded, copied, audited, inspected, and disclosed
+to authorized site, Department of Energy, and law enforcement personnel,
+as well as authorized officials of other agencies, both domestic and foreign.
+By using this system, the user consents to such interception, monitoring,
+recording, copying, auditing, inspection, and disclosure at the discretion
+of authorized site or Department of Energy personnel.
+
+Unauthorized or improper use of this system may result in administrative
+disciplinary action and civil and criminal penalties. By continuing to use
+this system you indicate your awareness of and consent to these terms and
+conditions of use. LOG OFF IMMEDIATELY if you do not agree to the conditions
+stated in this warning.
+
+*****************************************************************************
+
+Login connection to host c0-1c2s9n1 :
+
+Using backend: pytorch
+Using backend: pytorch
+Using backend: pytorch
+Namespace(batch_size=1000, batch_size_eval=100000, dataset=None, dropout=0.5, eval_every=5, fan_out='10,25', graph_name='reddit', id=None, ip_config='ip_config.txt', local_rank=0, log_every=20, lr=0.003, n_classes=None, num_clients=None, num_epochs=30, num_gpus=-1, num_hidden=16, num_layers=2, part_config=None, standalone=False)
+Namespace(batch_size=1000, batch_size_eval=100000, dataset=None, dropout=0.5, eval_every=5, fan_out='10,25', graph_name='reddit', id=None, ip_config='ip_config.txt', local_rank=0, log_every=20, lr=0.003, n_classes=None, num_clients=None, num_epochs=30, num_gpus=-1, num_hidden=16, num_layers=2, part_config=None, standalone=False)
+Using backend: pytorch
+Namespace(batch_size=1000, batch_size_eval=100000, dataset=None, dropout=0.5, eval_every=5, fan_out='10,25', graph_name='reddit', id=None, ip_config='ip_config.txt', local_rank=0, log_every=20, lr=0.003, n_classes=None, num_clients=None, num_epochs=30, num_gpus=-1, num_hidden=16, num_layers=2, part_config=None, standalone=False)
+Namespace(batch_size=1000, batch_size_eval=100000, dataset=None, dropout=0.5, eval_every=5, fan_out='10,25', graph_name='reddit', id=None, ip_config='ip_config.txt', local_rank=0, log_every=20, lr=0.003, n_classes=None, num_clients=None, num_epochs=30, num_gpus=-1, num_hidden=16, num_layers=2, part_config=None, standalone=False)
