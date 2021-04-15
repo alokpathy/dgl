@@ -11,12 +11,14 @@ import torch.distributed as dist
 import time
 
 def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
+  broad_func_start = time.time()
   # node_count = graph.number_of_nodes()
   node_count = graph.size(0)
 #   print('---------',inputs.shape[1], ampbyp)
   n_per_proc = math.ceil(float(node_count) / (self.size / self.replication))
   z_loc = torch.FloatTensor(ampbyp[0].size(0), inputs.size(1)).fill_(0)
-  inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1)).fill_(0)
+  # inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1)).fill_(0)
+  inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1))
  
   rank_c = self.rank // self.replication
   rank_col = self.rank % self.replication
@@ -37,9 +39,9 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
 
     if q == self.rank:
       inputs_recv = inputs.clone()
-      # inputs_recv = inputs
     elif q_c == self.size // self.replication - 1:
-      inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
+      # inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
+      inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1))
 
     inputs_recv = inputs_recv.contiguous()
     bcast_start = time.time()
@@ -57,6 +59,7 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
   reduce_start = time.time()
   dist.all_reduce(z_loc, op=dist.reduce_op.SUM, group=self.row_groups[rank_c])
   self.timings["reduce"] += time.time() - reduce_start
+  self.timings["broad_func"] += time.time() - broad_func_start
 
   return z_loc
 
@@ -311,11 +314,15 @@ class SAGEConvMLPFn(torch.autograd.Function):
     @staticmethod
     # bias is an optional argument
     def forward(ctx, input, weight, bias, self):
+        mlp_start = time.time()
         ctx.save_for_backward(input, weight, bias)
         ctx.self = self
+        dcomp_start = time.time()
         output = input.mm(weight.t())
         if bias is not None:
             output += bias.unsqueeze(0).expand_as(output)
+        self.timings["dcomp"] += time.time() - dcomp_start
+        self.timings["mlp"] += time.time() - mlp_start
         return output
 
     # This function has only a single output, so it gets only one gradient
@@ -326,6 +333,7 @@ class SAGEConvMLPFn(torch.autograd.Function):
         # None. Thanks to the fact that additional trailing Nones are
         # ignored, the return statement is simple even when the function has
         # optional inputs.
+        mlp_start = time.time()
         input, weight, bias = ctx.saved_tensors
         self = ctx.self
         grad_input = grad_weight = grad_bias = None
@@ -358,5 +366,6 @@ class SAGEConvMLPFn(torch.autograd.Function):
             dist.all_reduce(grad_bias, op=dist.reduce_op.SUM, group=self.col_groups[rank_col])
             self.timings["op"] += time.time() - op_start
 
+        self.timings["mlp"] += time.time() - mlp_start
         return grad_input, grad_weight, grad_bias, None
         # return grad_input, grad_weight, grad_bias

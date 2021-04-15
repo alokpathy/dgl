@@ -14,6 +14,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.autograd.profiler as profiler
 import dgl
 from dgl import DGLGraph
 from dgl.data import register_data_args, load_data
@@ -68,6 +69,14 @@ class GraphSAGE(nn.Module):
     self.timings["bcast"] = 0.0
     self.timings["reduce"] = 0.0
     self.timings["op"] = 0.0
+    self.timings["barrier"] = 0.0
+    self.timings["broad_func"] = 0.0
+    self.timings["mlp"] = 0.0
+    self.timings["forward"] = 0.0
+    self.timings["backward"] = 0.0
+    self.timings["forward_agg"] = 0.0
+    self.timings["forward_mlp"] = 0.0
+    self.timings["forward_actdrop"] = 0.0
 
     # input layer
     self.agg_layers.append(SAGEConvAgg(in_feats, aggregator_type))
@@ -86,13 +95,21 @@ class GraphSAGE(nn.Module):
     self.mlp_layers.append(SAGEConvMLP(n_hidden, n_classes, aggregator_type)) # activation None
 
   def forward(self, graph, inputs, ampbyp, ampbyp_dgl, degrees):
+    forward_actdrop_start = time.time()
     h = self.dropout(inputs)
+    self.timings["forward_actdrop"] += time.time() - forward_actdrop_start
     for l, (agg_layer, mlp_layer) in enumerate(zip(self.agg_layers, self.mlp_layers)):
+      forward_agg_start = time.time()
       z = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, h)
+      self.timings["forward_agg"] += time.time() - forward_agg_start
+      forward_mlp_start = time.time()
       h = mlp_layer(self, graph, z, z)
+      self.timings["forward_mlp"] += time.time() - forward_mlp_start
+      forward_actdrop_start = time.time()
       if l != len(self.agg_layers) - 1:
         h = self.activation(h)
         h = self.dropout(h)
+      self.timings["forward_actdrop"] += time.time() - forward_actdrop_start
     return h
 
 # Normalize all elements according to KW's normalization rule
@@ -224,8 +241,11 @@ def evaluate(model, graph, features, labels, nid, nid_count, ampbyp, ampbyp_dgl,
 
         logits = logits[nid]
         labels = labels[nid]
-        _, indices = torch.max(logits, dim=1)
-        correct = torch.sum(indices == labels)
+        if logits.size(0) > 0:
+            _, indices = torch.max(logits, dim=1)
+            correct = torch.sum(indices == labels)
+        else:
+            correct = torch.tensor(0)
 
         dist.all_reduce(correct, op=dist.reduce_op.SUM, group=group)
         return correct.item() * 1.0 / nid_count
@@ -450,10 +470,10 @@ def main(args):
     rank_val_nids = rank_val_mask.nonzero().squeeze()
     rank_test_nids = rank_test_mask.nonzero().squeeze()
 
-    # initialize graph
     dur = []
     total_start = time.time()
     for epoch in range(args.n_epochs):
+        print(f"Epoch: {epoch}", flush=True)
         if epoch == 1: # skip first epoch times
             total_start = time.time()
         model.train()
@@ -463,7 +483,7 @@ def main(args):
         # forward
         start_forward = time.time()
         logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
-        stop_forward = time.time()
+        model.timings["forward"] += time.time() - start_forward
 
         loss = F.cross_entropy(logits[rank_train_nids], labels_rank[rank_train_nids].long(), reduction="sum") 
 
@@ -477,7 +497,7 @@ def main(args):
         optimizer.zero_grad()
         start_backward = time.time()
         loss.backward()
-        stop_backward = time.time()
+        model.timings["backward"] += time.time() - start_backward
 
         optimizer.step()
         # model.timings["total"] += time.time() - total_start
@@ -487,33 +507,31 @@ def main(args):
 
         if epoch == 0:
             # Erase first epoch timings
-            model.timings["total"] = 0.0
-            model.timings["scomp"] = 0.0
-            model.timings["dcomp"] = 0.0
-            model.timings["bcast"] = 0.0
-            model.timings["reduce"] = 0.0
-            model.timings["op"] = 0.0
+            model.timings = dict.fromkeys(model.timings.keys(), 0.0)
 
         # acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
-        acc = evaluate(model, g_loc, features_loc, labels_rank, rank_val_nids, \
-                            val_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
-        print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
-              "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
-                                            acc, n_edges / np.mean(dur) / 1000), flush=True)
+        # acc = evaluate(model, g_loc, features_loc, labels_rank, rank_val_nids, \
+        #                     val_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
+        # print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
+        #       "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
+        #                                     acc, n_edges / np.mean(dur) / 1000), flush=True)
 
+    barrier_start = time.time()
     dist.barrier()
     model.timings["total"] += time.time() - total_start
+    model.timings["barrier"] += time.time() - barrier_start
     print()
     # acc = evaluate(model, g_loc, features_loc, labels, test_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
-    acc = evaluate(model, g_loc, features_loc, labels_rank, rank_test_nids, \
-                        test_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
-    print("Test Accuracy {:.4f}".format(acc))
+    # acc = evaluate(model, g_loc, features_loc, labels_rank, rank_test_nids, \
+    #                     test_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
+    # print("Test Accuracy {:.4f}".format(acc))
 
     print(flush=True)
     dist.barrier()
     print("Timings")
-    print("rank, total, scomp, dcomp, bcast, reduce, op")
-    print(f"{rank}, {model.timings['total']}, {model.timings['scomp']}, {model.timings['dcomp']}, {model.timings['bcast']}, {model.timings['reduce']}, {model.timings['op']}")
+    # print("rank, total, scomp, dcomp, bcast, reduce, op, barrier")
+    # print(f"{rank}, {model.timings['total']}, {model.timings['scomp']}, {model.timings['dcomp']}, {model.timings['bcast']}, {model.timings['reduce']}, {model.timings['op']}, {model.timings['barrier']}")
+    print(f"rank: {rank} timings: {model.timings}")
 
 
 if __name__ == '__main__':
