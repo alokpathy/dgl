@@ -143,6 +143,7 @@ def main(args):
 
     # initialize graph
     dur = []
+    torch.manual_seed(0)
     for epoch in range(args.n_epochs):
         model.train()
         if epoch >= 3:

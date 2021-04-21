@@ -25,7 +25,7 @@ from ogb.nodeproppred import DglNodePropPredDataset
 
 import socket
 
-import torch_sparse
+# import torch_sparse
 
 import copy
 
@@ -174,30 +174,34 @@ def oned_partition(rank, size, replication, inputs, adj_matrix, normalization):
     am_partitions = None
     am_pbyp = None
 
-    rank_c = rank // replication
+    # rank_c = rank // replication
     # Compute the adj_matrix and inputs partitions for this process
     with torch.no_grad():
         # Column partitions
         am_partitions, vtx_indices = split_coo(adj_matrix, node_count, n_per_proc, 1)
+    
+        am_pbyp_global = []
+        # Across all ranks
+        for rank_c in range(int(size // replication)):
+            proc_node_count = vtx_indices[rank_c + 1] - vtx_indices[rank_c]
+            am_pbyp, _ = split_coo(am_partitions[rank_c], node_count, n_per_proc, 0)
+            for i in range(len(am_pbyp)):
+                if i == size // replication - 1:
+                    last_node_count = vtx_indices[i + 1] - vtx_indices[i]
+                    am_pbyp[i] = torch.sparse_coo_tensor(am_pbyp[i], torch.ones(am_pbyp[i].size(1)), 
+                                                            size=(last_node_count, proc_node_count),
+                                                            requires_grad=False)
 
-        proc_node_count = vtx_indices[rank_c + 1] - vtx_indices[rank_c]
-        am_pbyp, _ = split_coo(am_partitions[rank_c], node_count, n_per_proc, 0)
-        for i in range(len(am_pbyp)):
-            if i == size // replication - 1:
-                last_node_count = vtx_indices[i + 1] - vtx_indices[i]
-                am_pbyp[i] = torch.sparse_coo_tensor(am_pbyp[i], torch.ones(am_pbyp[i].size(1)), 
-                                                        size=(last_node_count, proc_node_count),
-                                                        requires_grad=False)
+                    am_pbyp[i] = scale_elements(adj_matrix, am_pbyp[i], node_count, vtx_indices[i], 
+                                                    vtx_indices[rank_c], normalization)
+                else:
+                    am_pbyp[i] = torch.sparse_coo_tensor(am_pbyp[i], torch.ones(am_pbyp[i].size(1)), 
+                                                            size=(n_per_proc, proc_node_count),
+                                                            requires_grad=False)
 
-                am_pbyp[i] = scale_elements(adj_matrix, am_pbyp[i], node_count, vtx_indices[i], 
-                                                vtx_indices[rank_c], normalization)
-            else:
-                am_pbyp[i] = torch.sparse_coo_tensor(am_pbyp[i], torch.ones(am_pbyp[i].size(1)), 
-                                                        size=(n_per_proc, proc_node_count),
-                                                        requires_grad=False)
-
-                am_pbyp[i] = scale_elements(adj_matrix, am_pbyp[i], node_count, vtx_indices[i], 
-                                                vtx_indices[rank_c], normalization)
+                    am_pbyp[i] = scale_elements(adj_matrix, am_pbyp[i], node_count, vtx_indices[i], 
+                                                    vtx_indices[rank_c], normalization)
+            am_pbyp_global.append(am_pbyp)
 
         for i in range(len(am_partitions)):
             proc_node_count = vtx_indices[i + 1] - vtx_indices[i]
@@ -210,12 +214,13 @@ def oned_partition(rank, size, replication, inputs, adj_matrix, normalization):
 
         input_partitions = torch.split(inputs, math.ceil(float(inputs.size(0)) / (size / replication)), dim=0)
 
-        adj_matrix_loc = am_partitions[rank_c]
-        inputs_loc = input_partitions[rank_c]
+        # adj_matrix_loc = am_partitions[rank_c]
+        # inputs_loc = input_partitions[rank_c]
 
-    print(f"rank: {rank} adj_matrix_loc.size: {adj_matrix_loc.size()}", flush=True)
-    print(f"rank: {rank} inputs_loc.size: {inputs_loc.size()}", flush=True)
-    return inputs_loc, adj_matrix_loc, am_pbyp
+    print(f"rank: {rank} adj_matrix_loc.size: {am_partitions[0].size()}", flush=True)
+    print(f"rank: {rank} inputs_loc.size: {input_partitions[0].size()}", flush=True)
+    # return inputs_loc, adj_matrix_loc, am_pbyp
+    return input_partitions, am_partitions, am_pbyp_global
 
 
 def evaluate(model, graph, features, labels, nid, nid_count, ampbyp, ampbyp_dgl, degrees, group):
@@ -255,7 +260,7 @@ def evaluate(model, graph, features, labels, nid, nid_count, ampbyp, ampbyp_dgl,
 
 def main(args):
     # load and preprocess dataset
-    if "papers100M" not in args.dataset:
+    if True or "papers100M" not in args.dataset:
         if args.dataset.startswith("ogbn"):
             data = DglNodePropPredDataset(name=args.dataset)
             
@@ -380,34 +385,39 @@ def main(args):
     group = dist.new_group(list(range(size)))
     row_groups, col_groups = get_proc_groups(rank, size, args.replication)
 
-    if "papers100M" not in args.dataset:
+    if True or "papers100M" not in args.dataset:
         # Partition input graph and features
         edges = g.all_edges() # Convert DGLGraph to COO for partitioning
         degrees = g.in_degrees()
         edges = torch.stack([edges[0], edges[1]], dim=0)
-        features_loc, g_loc, ampbyp = oned_partition(rank, size, args.replication, features, edges, 
-                                                            args.normalization)
+        # features_loc, g_loc, ampbyp = oned_partition(rank, size, args.replication, features, edges, 
+        #                                                     args.normalization)
 
-        # size = 8
-        # for rank in range(size):
-        #     print(f"Partitioning on rank {rank}...", flush=True)
-        #     features_loc, g_loc, ampbyp = oned_partition(rank, size, args.replication, features, edges, 
-        #                                                         args.normalization)
-        #     print(f"Done partitioning on rank {rank}", flush=True)
-        #     features_loc = features_loc.clone()
-        #     g_loc = g_loc.clone()
-        #     for i in range(len(ampbyp)):
-        #         ampbyp[i] = ampbyp[i].clone()
-        #     path = "./dataset/ogbn_papers100M/partitions/proc{}".format(size)
-        #     torch.save(features_loc, "{}/rank{}_features.pt".format(path, rank))
-        #     torch.save(g_loc, "{}/rank{}_graph.pt".format(path, rank))
-        #     torch.save(ampbyp, "{}/rank{}_ampbyp.pt".format(path, rank))
-        #     print(f"Done saving on rank {rank}", flush=True)
+        size = 128
+        print(f"Partitioning...", flush=True)
+        features, g, ampbyp_global = oned_partition(rank, size, args.replication, features, edges, 
+                                                            args.normalization)
+        print(f"Done partitioning", flush=True)
+        for rank in range(size):
+            features_loc = features[rank]
+            g_loc = g[rank]
+            ampbyp = ampbyp_global[rank]
+            features_loc = features_loc.clone()
+            g_loc = g_loc.clone()
+            for i in range(len(ampbyp)):
+                ampbyp[i] = ampbyp[i].clone()
+            path = "./dataset/ogbn_papers100M/partitions/proc{}".format(size)
+            print(f"Saving on rank {rank}", flush=True)
+            torch.save(features_loc, "{}/rank{}_features.pt".format(path, rank))
+            torch.save(g_loc, "{}/rank{}_graph.pt".format(path, rank))
+            torch.save(ampbyp, "{}/rank{}_ampbyp.pt".format(path, rank))
+            print(f"Done saving on rank {rank}", flush=True)
     else:
         path = "./dataset/ogbn_papers100M/partitions/proc{}".format(size)
         features_loc = torch.load("{}/rank{}_features.pt".format(path, rank))
         g_loc = torch.load("{}/rank{}_graph.pt".format(path, rank))
         ampbyp = torch.load("{}/rank{}_ampbyp.pt".format(path, rank))
+    exit()
 
     # print("------------------->",ampbyp)
     # Convert COO back to DGLGraph
@@ -477,7 +487,7 @@ def main(args):
     torch.manual_seed(rank)
     total_start = time.time()
     for epoch in range(args.n_epochs):
-        print(f"Epoch: {epoch}", flush=True)
+        # print(f"Epoch: {epoch}", flush=True)
         if epoch == 1: # skip first epoch times
             total_start = time.time()
         model.train()

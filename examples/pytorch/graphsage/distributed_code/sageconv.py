@@ -17,8 +17,8 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
 #   print('---------',inputs.shape[1], ampbyp)
   n_per_proc = math.ceil(float(node_count) / (self.size / self.replication))
   z_loc = torch.FloatTensor(ampbyp[0].size(0), inputs.size(1)).fill_(0)
-  # inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1)).fill_(0)
-  inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1))
+  inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1)).fill_(0)
+  # inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1))
  
   rank_c = self.rank // self.replication
   rank_col = self.rank % self.replication
@@ -40,19 +40,17 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
     if q == self.rank:
       inputs_recv = inputs.clone()
     elif q_c == self.size // self.replication - 1:
-      # inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
-      inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1))
+      inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
+      # inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1))
 
     inputs_recv = inputs_recv.contiguous()
     bcast_start = time.time()
     dist.broadcast(inputs_recv, src=q, group=self.col_groups[rank_col])
     self.timings["bcast"] += time.time() - bcast_start
     
-    start_dst_vtx = (rank_c * n_per_proc)
-    end_dst_vtx = start_dst_vtx + ampbyp[0].size(0)
-    degrees_loc = degrees[start_dst_vtx:end_dst_vtx]
     scomp_start = time.time()
-    z_loc += agg(ampbyp_dgl[am_partid], (inputs_recv, z_loc), degrees_loc)
+    z_loc = z_loc.contiguous()
+    z_loc = agg(ampbyp_dgl[am_partid], (inputs_recv, z_loc))
     self.timings["scomp"] += time.time() - scomp_start
   
   z_loc = z_loc.contiguous()
@@ -60,6 +58,11 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
   dist.all_reduce(z_loc, op=dist.reduce_op.SUM, group=self.row_groups[rank_c])
   self.timings["reduce"] += time.time() - reduce_start
   self.timings["broad_func"] += time.time() - broad_func_start
+
+  start_dst_vtx = (rank_c * n_per_proc)
+  end_dst_vtx = start_dst_vtx + ampbyp[0].size(0)
+  degrees_loc = degrees[start_dst_vtx:end_dst_vtx]
+  z_loc = z_loc / (degrees_loc.unsqueeze(-1) + 1)
 
   return z_loc
 
@@ -146,7 +149,7 @@ class SAGEConvAggLoc(nn.Module):
         _, (rst, _) = self.lstm(m, h)
         return {'neigh': rst.squeeze(0)}
     
-    def forward(self, graph, feat, degrees):
+    def forward(self, graph, feat):
         r"""
 
         Description
@@ -202,8 +205,9 @@ class SAGEConvAggLoc(nn.Module):
                 graph.update_all(fn.copy_src('h', 'm'), fn.sum('m', 'neigh'))
                 # divide in_degrees
                 # degs = graph.in_degrees().to(feat_dst)
-                degs = degrees.to(feat_dst)
-                h_neigh = (graph.dstdata['neigh'] + graph.dstdata['h']) / (degs.unsqueeze(-1) + 1)
+                # degs = degrees.to(feat_dst)
+                # h_neigh = (graph.dstdata['neigh'] + graph.dstdata['h']) / (degs.unsqueeze(-1) + 1)
+                h_neigh = (graph.dstdata['neigh'] + graph.dstdata['h'])
             elif self._aggre_type == 'pool':
                 graph.srcdata['h'] = F.relu(self.fc_pool(feat_src))
                 graph.update_all(fn.copy_src('h', 'm'), fn.max('m', 'neigh'))
@@ -295,6 +299,7 @@ class SAGEConvMLP(nn.Module):
         
         # GraphSAGE GCN does not require fc_self.
         if self._aggre_type == 'gcn':
+            # rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias, graphsage)
             rst = SAGEConvMLPFn.apply(h_neigh, self.fc_neigh.weight, self.fc_neigh.bias, graphsage)
         else:
             rst = self.fc_self(h_self) + self.fc_neigh(h_neigh)
@@ -347,9 +352,9 @@ class SAGEConvMLPFn(torch.autograd.Function):
             grad_input = grad_output.mm(weight)
             self.timings["dcomp"] += time.time() - dcomp_start
         if ctx.needs_input_grad[1]:
-            dcomp_start = time.time()
-            grad_weight = grad_output.t().mm(input)
-            self.timings["dcomp"] += time.time() - dcomp_start
+            # dcomp_start = time.time()
+            # grad_weight = grad_output.t().mm(input)
+            # self.timings["dcomp"] += time.time() - dcomp_start
 
             rank_col = self.rank % self.replication
             op_start = time.time()

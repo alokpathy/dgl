@@ -489,7 +489,7 @@ def main(args):
         logits = model(g_loc, features_loc, ampbyp, ampbyp_dgl, degrees)
         model.timings["forward"] += time.time() - start_forward
 
-        loss = F.cross_entropy(logits[rank_train_nids], labels_rank[rank_train_nids], reduction="sum") 
+        loss = F.cross_entropy(logits[rank_train_nids], labels_rank[rank_train_nids].long(), reduction="sum") 
 
         loss_recv = []
         for i in range(size // args.replication):
