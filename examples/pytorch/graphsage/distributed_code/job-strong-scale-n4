@@ -1,0 +1,24 @@
+#!/bin/sh
+#SBATCH -N 4
+#SBATCH -C haswell
+#SBATCH -q regular
+#SBATCH -t 2:00:00
+#SBATCH -J job_ss_n4
+
+hostname=$(scontrol show hostnames $(echo $SLURM_JOB_NODELIST) | head -n 1)
+module load pytorch
+conda activate dgl-intel
+
+# Replication 1
+srun -N 4 -l python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 200 --n-layers 2 --n-hidden 16 --replication 1 --hostname $hostname &> outputs/reddit_epochs200_nodes4_rep1_layers2_hidden16.txt
+srun -N 4 -l python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 200 --n-layers 2 --n-hidden 16 --replication 1 --dropout 0.0 --hostname $hostname &> outputs/reddit_epochs200_nodes4_rep1_layers2_hidden16_nodrop.txt
+
+srun -N 4 -l python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 200 --n-layers 3 --n-hidden 256 --lr 0.03 --replication 1 --hostname $hostname &> outputs/products_epochs200_nodes4_rep1_layers3_hidden256_lr003.txt
+srun -N 4 -l python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 200 --n-layers 3 --n-hidden 256 --lr 0.03 --dropout 0.0 --replication 1 --hostname $hostname &> outputs/products_epochs200_nodes4_rep1_layers3_hidden256_lr003_nodrop.txt
+
+# Replication 2
+srun -N 4 -l python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 200 --n-layers 2 --n-hidden 16 --replication 2 --hostname $hostname &> outputs/reddit_epochs200_nodes4_rep2_layers2_hidden16.txt
+srun -N 4 -l python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 200 --n-layers 2 --n-hidden 16 --replication 2 --dropout 0.0 --hostname $hostname &> outputs/reddit_epochs200_nodes4_rep2_layers2_hidden16_nodrop.txt
+
+srun -N 4 -l python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 200 --n-layers 3 --n-hidden 256 --lr 0.03 --replication 2 --hostname $hostname &> outputs/products_epochs200_nodes4_rep2_layers3_hidden256_lr003.txt
+srun -N 4 -l python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 200 --n-layers 3 --n-hidden 256 --lr 0.03 --dropout 0.0 --replication 2 --hostname $hostname &> outputs/products_epochs200_nodes4_rep2_layers3_hidden256_lr003_nodrop.txt

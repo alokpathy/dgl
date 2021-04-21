@@ -166,9 +166,6 @@ config.cmake
 examples/pytorch/graphsage/outputs/
 examples/pytorch/graphsage/distributed_code/outputs/
 
-# job files
-examples/pytorch/graphsage/distributed_code/job-*
-
 # dataset
 examples/pytorch/graphsage/dataset
 examples/pytorch/graphsage/experimental/data

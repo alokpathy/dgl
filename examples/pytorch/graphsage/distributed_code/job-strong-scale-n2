@@ -1,0 +1,14 @@
+#!/bin/sh
+#SBATCH -N 2
+#SBATCH -C haswell
+#SBATCH -q regular
+#SBATCH -t 2:00:00
+#SBATCH -J job_ss_n2
+
+hostname=$(scontrol show hostnames $(echo $SLURM_JOB_NODELIST) | head -n 1)
+module load pytorch
+conda activate dgl-intel
+
+srun -N 2 python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 100 --hostname $hostname --replication 1 &> outputs/reddit_epochs100_nodes2_rep1.txt
+srun -N 2 python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 100 --hostname $hostname --replication 1 &> outputs/products_epochs100_nodes2_rep1.txt
+

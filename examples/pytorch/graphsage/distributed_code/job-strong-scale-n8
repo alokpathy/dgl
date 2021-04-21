@@ -1,0 +1,23 @@
+#!/bin/sh
+#SBATCH -N 8
+#SBATCH -C knl
+#SBATCH -q regular
+#SBATCH -t 1:00:00
+#SBATCH -J job_ss_n8
+
+hostname=$(scontrol show hostnames $(echo $SLURM_JOB_NODELIST) | head -n 1)
+module load pytorch
+conda activate dgl-intel
+
+# Replication 1
+srun -N 8 python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 100 --hostname $hostname --replication 1 &> outputs/reddit_epochs100_nodes8_rep1.txt
+srun -N 8 python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 100 --hostname $hostname --replication 1 &> outputs/products_epochs100_nodes8_rep1.txt
+
+# Replication 2
+srun -N 8 python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 100 --hostname $hostname --replication 2 &> outputs/reddit_epochs100_nodes8_rep2.txt
+srun -N 8 python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 100 --hostname $hostname --replication 2 &> outputs/products_epochs100_nodes8_rep2.txt
+
+# # Replication 4
+# srun -N 8 python train_full_15d.py --dataset reddit --gpu -1 --n-epochs 100 --hostname $hostname --replication 4 &> outputs/reddit_epochs100_nodes8_rep4.txt
+# srun -N 8 python train_full_15d.py --dataset ogbn-products --gpu -1 --n-epochs 100 --hostname $hostname --replication 4 &> outputs/products_epochs100_nodes8_rep4.txt
+
