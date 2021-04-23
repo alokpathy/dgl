@@ -17,8 +17,8 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
 #   print('---------',inputs.shape[1], ampbyp)
   n_per_proc = math.ceil(float(node_count) / (self.size / self.replication))
   z_loc = torch.FloatTensor(ampbyp[0].size(0), inputs.size(1)).fill_(0)
-  inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1)).fill_(0)
-  # inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1))
+  # inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1)).fill_(0)
+  inputs_recv = torch.FloatTensor(n_per_proc, inputs.size(1))
  
   rank_c = self.rank // self.replication
   rank_col = self.rank % self.replication
@@ -40,8 +40,8 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
     if q == self.rank:
       inputs_recv = inputs.clone()
     elif q_c == self.size // self.replication - 1:
-      inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
-      # inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1))
+      # inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1)).fill_(0)
+      inputs_recv = torch.FloatTensor(ampbyp[am_partid].size(1), inputs.size(1))
 
     inputs_recv = inputs_recv.contiguous()
     bcast_start = time.time()
@@ -53,7 +53,7 @@ def broad_func(self, graph, ampbyp, ampbyp_dgl, agg, degrees, inputs):
     z_loc = agg(ampbyp_dgl[am_partid], (inputs_recv, z_loc))
     self.timings["scomp"] += time.time() - scomp_start
   
-  z_loc = z_loc.contiguous()
+  # z_loc = z_loc.contiguous()
   reduce_start = time.time()
   dist.all_reduce(z_loc, op=dist.reduce_op.SUM, group=self.row_groups[rank_c])
   self.timings["reduce"] += time.time() - reduce_start
@@ -202,7 +202,8 @@ class SAGEConvAggLoc(nn.Module):
                 check_eq_shape(feat)
                 graph.srcdata['h'] = feat_src
                 graph.dstdata['h'] = feat_dst     # same as above if homogeneous
-                graph.update_all(fn.copy_src('h', 'm'), fn.sum('m', 'neigh'))
+                msg_fn = fn.copy_src('h', 'm')
+                graph.update_all(msg_fn, fn.sum('m', 'neigh'))
                 # divide in_degrees
                 # degs = graph.in_degrees().to(feat_dst)
                 # degs = degrees.to(feat_dst)

@@ -16,8 +16,7 @@ from dgl import DGLGraph
 from dgl.data import register_data_args, load_data
 from dgl.nn.pytorch.conv import SAGEConv
 
-import ogb
-from ogb.nodeproppred import DglNodePropPredDataset
+import torch.autograd.profiler as profiler
 
 class GraphSAGE(nn.Module):
     def __init__(self,
@@ -63,35 +62,16 @@ def evaluate(model, graph, features, labels, nid):
 
 def main(args):
     # load and preprocess dataset
-    if args.dataset.startswith("ogbn"):
-        data = DglNodePropPredDataset(name=args.dataset)
-        
-        split_idx = data.get_idx_split()
-        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
-        g, labels = data[0]
-        n_edges = g.number_of_edges()
-
-        train_mask = torch.zeros(g.num_nodes())
-        val_mask = torch.zeros(g.num_nodes())
-        test_mask = torch.zeros(g.num_nodes())
-
-        train_mask = train_mask.scatter_(0, train_idx, True)
-        val_mask = val_mask.scatter_(0, valid_idx, True)
-        test_mask = test_mask.scatter_(0, test_idx, True)
-
-        labels = torch.max(labels, 1)[0]
-    else:
-        data = load_data(args)
-        g = data[0]
-        labels = g.ndata['label']
-        train_mask = g.ndata['train_mask']
-        val_mask = g.ndata['val_mask']
-        test_mask = g.ndata['test_mask']
-        n_edges = data.graph.number_of_edges()
-
+    data = load_data(args)
+    g = data[0]
     features = g.ndata['feat']
+    labels = g.ndata['label']
+    train_mask = g.ndata['train_mask']
+    val_mask = g.ndata['val_mask']
+    test_mask = g.ndata['test_mask']
     in_feats = features.shape[1]
     n_classes = data.num_classes
+    n_edges = data.graph.number_of_edges()
     print("""----Data statistics------'
       #Edges %d
       #Classes %d
@@ -127,6 +107,7 @@ def main(args):
 
     # create GraphSAGE model
     torch.manual_seed(0)
+    print(f"features.requires_grad: {features.requires_grad}")
     model = GraphSAGE(in_feats,
                       args.n_hidden,
                       n_classes,
@@ -142,32 +123,28 @@ def main(args):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     # initialize graph
-    dur = []
     torch.manual_seed(0)
+    dur = []
     for epoch in range(args.n_epochs):
+        print(f"Epoch: {epoch}", flush=True)
         model.train()
         if epoch >= 3:
             t0 = time.time()
         # forward
-        start_forward = time.time()
         logits = model(g, features)
-        stop_forward = time.time()
         loss = F.cross_entropy(logits[train_nid], labels[train_nid])
 
         optimizer.zero_grad()
-        start_backward = time.time()
         loss.backward()
-        stop_backward = time.time()
         optimizer.step()
 
         if epoch >= 3:
             dur.append(time.time() - t0)
-            print(f"epoch_time: {dur[-1]} forward_time: {stop_forward - start_forward} backward_time: {stop_backward - start_backward}")
 
         acc = evaluate(model, g, features, labels, val_nid)
         print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
               "ETputs(KTEPS) {:.2f}".format(epoch, np.mean(dur), loss.item(),
-                                            acc, n_edges / np.mean(dur) / 1000), flush=True)
+                                            acc, n_edges / np.mean(dur) / 1000))
 
     print()
     acc = evaluate(model, g, features, labels, test_nid)

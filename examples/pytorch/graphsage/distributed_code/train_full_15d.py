@@ -12,6 +12,7 @@ import numpy as np
 import networkx as nx
 import torch
 import torch.distributed as dist
+import torch_ccl
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd.profiler as profiler
@@ -48,6 +49,7 @@ def get_proc_groups(rank, size, replication):
     for i in range(len(col_procs)):
         col_groups.append(dist.new_group(col_procs[i]))
 
+    print(f"row_proc: {row_procs} col_procs; {col_procs}")
     return row_groups, col_groups
 
 class GraphSAGE(nn.Module):
@@ -101,12 +103,21 @@ class GraphSAGE(nn.Module):
     h = self.dropout(inputs)
     self.timings["forward_actdrop"] += time.time() - forward_actdrop_start
     for l, (agg_layer, mlp_layer) in enumerate(zip(self.agg_layers, self.mlp_layers)):
-      forward_agg_start = time.time()
-      z = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, h)
-      self.timings["forward_agg"] += time.time() - forward_agg_start
-      forward_mlp_start = time.time()
-      h = mlp_layer(self, graph, z, z)
-      self.timings["forward_mlp"] += time.time() - forward_mlp_start
+      lin_before_mp = mlp_layer._in_src_feats > mlp_layer._out_feats
+      if lin_before_mp:
+          forward_mlp_start = time.time()
+          z = mlp_layer(self, graph, h, h)
+          self.timings["forward_mlp"] += time.time() - forward_mlp_start
+          forward_agg_start = time.time()
+          h = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, z)
+          self.timings["forward_agg"] += time.time() - forward_agg_start
+      else:
+          forward_agg_start = time.time()
+          z = agg_layer(self, graph, ampbyp, ampbyp_dgl, degrees, h)
+          self.timings["forward_agg"] += time.time() - forward_agg_start
+          forward_mlp_start = time.time()
+          h = mlp_layer(self, graph, z, z)
+          self.timings["forward_mlp"] += time.time() - forward_mlp_start
       forward_actdrop_start = time.time()
       if l != len(self.agg_layers) - 1:
         h = self.activation(h)
@@ -439,7 +450,6 @@ def main(args):
                                             num_dst_nodes=ampbyp[i].size(0)))
         print(f"i: {i} ampbyp.size: {ampbyp[i].size()}")
 
-    # features.requires_grad = True
     # create GraphSAGE model
     torch.manual_seed(0)
     model = GraphSAGE(in_feats,
@@ -476,6 +486,7 @@ def main(args):
     dur = []
     torch.manual_seed(rank)
     total_start = time.time()
+    # with profiler.profile(with_stack=True) as prof:
     for epoch in range(args.n_epochs):
         print(f"Epoch: {epoch}", flush=True)
         if epoch == 1: # skip first epoch times
@@ -515,12 +526,13 @@ def main(args):
 
         # acc = evaluate(model, g_loc, features_loc, labels, val_nid, ampbyp, ampbyp_dgl, degrees, col_groups[0])
         # acc = evaluate(model, g_loc, features_loc, labels, val_nid, \
-        # acc = evaluate(model, g_loc, features_loc, labels_rank, rank_val_nids, \
-        #                     val_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
-        # print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
-        #       "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
-        #                                     acc, n_edges / np.mean(dur) / 1000), flush=True)
+        acc = evaluate(model, g_loc, features_loc, labels_rank, rank_val_nids, \
+                            val_mask.nonzero().squeeze().size(0), ampbyp, ampbyp_dgl, degrees, col_groups[0])
+        print("Rank: {:05d} | Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
+              "ETputs(KTEPS) {:.2f}".format(rank, epoch, np.mean(dur), loss.item(),
+                                            acc, n_edges / np.mean(dur) / 1000), flush=True)
 
+    # print(prof.key_averages().table(sort_by='self_cpu_time_total', row_limit=10))
     barrier_start = time.time()
     dist.barrier()
     model.timings["total"] += time.time() - total_start
