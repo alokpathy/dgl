@@ -2,34 +2,12 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+import dgl
 from dgl import function as fn
 from dgl.utils import expand_as_pair, check_eq_shape
 import math
 import torch.distributed as dist
 
-def start_time(group, rank):
-    device = torch.device('cuda:{}'.format(rank_to_devid(rank, acc_per_rank))) #TODO: change for intel
-    if not timing:
-        return 0.0
-    if group is not None:
-        # dist.barrier(group)
-        torch.synchronize(device=device)
-    tstart = 0.0
-    if rank == 0:
-        tstart = time.time()
-    return tstart
-
-def stop_time(group, rank, tstart):
-    device = torch.device('cuda:{}'.format(rank_to_devid(rank, acc_per_rank))) #TODO: change for intel
-    if not timing:
-        return 0.0
-    if group is not None:
-       # dist.barrier(group)
-       torch.cuda.synchronize(device=device)
-    tstop = 0.0
-    if rank == 0:
-        tstop = time.time()
-    return tstop - tstart
 
 def proc_row_size(size):
     return math.floor(math.sqrt(size))
@@ -39,7 +17,8 @@ def proc_col_size(size):
 
 def broad_func_2d(self, graph, adj_matrix, agg, inputs, height, middim, width):
 
-    # tstart_broad_func_2d_time = start_time(row_groups[0], rank) #I'm sure we'll use this later
+    # tstart_broad_func_2d_time = time.perf_counter()
+    # start_time(row_groups[0], rank) #I'm sure we'll use this later
 
     proc_row = proc_row_size(self.size)
     proc_col = proc_col_size(self.size)
@@ -51,6 +30,7 @@ def broad_func_2d(self, graph, adj_matrix, agg, inputs, height, middim, width):
     width_per_proc  = width // proc_col
 
     middim_per_proc = middim // proc_col
+
 
     #resetting height_per_proc/width_per_proc in edge case
     if row == proc_row - 1:
@@ -83,14 +63,14 @@ def broad_func_2d(self, graph, adj_matrix, agg, inputs, height, middim, width):
             acol_values_len = torch.LongTensor([0])
     
         #timing the broadcast
-#        tstart = start_time(row_groups[row], rank)
+#        tstart_cols = time.perf_counter()
 
         #The Broadcast pt. 1
         dist.broadcast(acol_indices_len, row_src_rank, group=self.row_groups[row])
 
         #end time
-#        dur = stop_time(row_groups[row], rank, tstart)
-#        comm_time[run][rank] += dur
+#        tend_cols = time.perf_counter() - tstart_cols
+#        comm_time[rank] += dur
 #        summa_sparse_bcast1[run][rank] += dur
         #if rank == 0:
         #    summa_sparse_bcast1_words[run][rank] += 3 * acol_values_len
@@ -135,6 +115,11 @@ def broad_func_2d(self, graph, adj_matrix, agg, inputs, height, middim, width):
             acol = torch.sparse_coo_tensor(acol_indices, acol_values, 
                                             torch.Size([height_per_proc, middim_per_proc]))
 
+        acol_dgl = (dgl.create_block((acol._indices()[1], 
+                                acol._indices()[0]),
+                                num_src_nodes=acol.size(1), 
+                                num_dst_nodes=acol.size(0)))
+
         if col_src_rank == self.rank:
             brow = inputs
         else:
@@ -143,9 +128,12 @@ def broad_func_2d(self, graph, adj_matrix, agg, inputs, height, middim, width):
         brow = brow.contiguous()
         dist.broadcast(brow, col_src_rank, group=self.col_groups[col])
 
-        z_loc = agg(graph, brow)
+        z_loc = agg(acol_dgl, (brow, z_loc))
         #if rank == 0:
         #    summa_sparse_bcast2_words[run][rank] += brow.size(0) * brow.size(1)
+
+        # t_broad_func_2d_total = time.perf_counter() - tstart_broad_func_2d_time
+#        comm_total[rank][k] += t_broad_func_2d_total
 
     return z_loc
 
@@ -349,8 +337,8 @@ class SAGEConvAggLoc(nn.Module):
         """
         with graph.local_scope():
             if isinstance(feat, tuple):
-                feat_src = self.feat_drop(feat[0])
-                feat_dst = self.feat_drop(feat[1])
+                feat_src = feat[0]
+                feat_dst = feat[1]
             else:
                 # No dropout in aggregation
                 # feat_src = feat_dst = self.feat_drop(feat)

@@ -217,8 +217,8 @@ def twod_partition(rank, size, inputs, adj_matrix, normalization): #Data? featur
 
         adj_matrix_loc = am_pbyp[rank_row]
         inputs_loc = input_partitions[rank_row][rank_col]
-    print(adj_matrix_loc.size(), rank, flush=True)
-    print(inputs_loc.size(), rank, flush=True)
+    # print("ADJ MATRIX LOC", adj_matrix_loc.size(), rank, flush=True)
+    # print("INPUTS LOC", inputs_loc.size(), rank, flush=True)
     return inputs_loc, adj_matrix_loc, am_pbyp, node_count
 
 
@@ -338,8 +338,11 @@ def main(args):
                                             num_src_nodes=ampbyp[i].size(1), 
                                             num_dst_nodes=ampbyp[i].size(0)))
         print(f"i: {i} ampbyp.size: {ampbyp[i].size()}")
+    # print("FEATURES LOC SIZE", features_loc.size())
+    # print("G_LOC SIZE", g_loc.size())    
 
-    g_loc = g_loc.t().coalesce().to(device)
+
+    g_loc = g_loc.coalesce().to(device)
     g_loc_dgl = (dgl.create_block((g_loc._indices()[1], 
                                         g_loc._indices()[0]),
                                         num_src_nodes=g_loc.size(1), 
@@ -347,7 +350,7 @@ def main(args):
     # for i in range(len(ampbyp)):
     #     ampbyp[i] = dgl.heterograph({("_N", "_N", "_E"): (ampbyp[i]._indices()[0], ampbyp[i]._indices()[1])})
     for i in range(len(ampbyp)):
-        ampbyp[i] = ampbyp[i].t().coalesce().to(device)
+        ampbyp[i] = ampbyp[i].coalesce().to(device)
         # ampbyp[i] = dgl.heterograph({am_pbyp[i]})
 
     features.requires_grad = True
@@ -381,16 +384,15 @@ def main(args):
         # if epoch >= 3:
         #     t0 = time.time()
         # forward
-        print("TRAIN MODEL")
+        print("FORWARD PROP")
         start_forward = time.perf_counter()
-        logits = model(g_loc_dgl, features_loc, ampbyp[0]) #changed ampbyp to ampbyp of 0
+        logits = model(g_loc_dgl, features_loc, g_loc) #changed ampbyp to ampbyp of 0
         end_forward = time.perf_counter()
-        if epoch == 0 or epoch == 3:
-            print("LOGITS OUTPUT")
-            print(logits[0:20])
-
-            print("TIME DIFF", epoch)
-            print(end_forward - start_forward)
+        if epoch == 3:
+            if rank == 0:
+                print(end_forward - start_forward)
+            # print("TIME DIFF", rank)
+            # print(end_forward - start_forward)
 
         # rank_c = rank // args.replication
         # var = logits.size(0)
