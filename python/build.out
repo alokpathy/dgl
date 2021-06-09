@@ -1,0 +1,615 @@
+[1/1] Cythonizing dgl/_ffi/_cython/core.pyx
+running install
+running bdist_egg
+running egg_info
+writing dgl.egg-info/PKG-INFO
+writing dependency_links to dgl.egg-info/dependency_links.txt
+writing requirements to dgl.egg-info/requires.txt
+writing top-level names to dgl.egg-info/top_level.txt
+reading manifest file 'dgl.egg-info/SOURCES.txt'
+writing manifest file 'dgl.egg-info/SOURCES.txt'
+installing library code to build/bdist.linux-x86_64/egg
+running install_lib
+running build_py
+copying dgl/_ffi/_cython/core.cpp -> build/lib.linux-x86_64-3.6/dgl/_ffi/_cython
+running build_ext
+building 'dgl._ffi._cy3.core' extension
+creating build/temp.linux-x86_64-3.6
+creating build/temp.linux-x86_64-3.6/dgl
+creating build/temp.linux-x86_64-3.6/dgl/_ffi
+creating build/temp.linux-x86_64-3.6/dgl/_ffi/_cython
+gcc -pthread -B /home/ubuntu/anaconda3/envs/dgl-conda/compiler_compat -Wl,--sysroot=/ -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -fPIC -I../include/ -I../third_party/dmlc-core/include -I../third_party/dlpack/include -I/home/ubuntu/anaconda3/envs/dgl-conda/include/python3.6m -c dgl/_ffi/_cython/core.cpp -o build/temp.linux-x86_64-3.6/dgl/_ffi/_cython/core.o
+cc1plus: warning: command line option ‘-Wstrict-prototypes’ is valid for C/ObjC but not for C++
+g++ -pthread -shared -B /home/ubuntu/anaconda3/envs/dgl-conda/compiler_compat -L/home/ubuntu/anaconda3/envs/dgl-conda/lib -Wl,-rpath=/home/ubuntu/anaconda3/envs/dgl-conda/lib -Wl,--no-as-needed -Wl,--sysroot=/ build/temp.linux-x86_64-3.6/dgl/_ffi/_cython/core.o -Ldgl -L../build/Release -L../build -ldgl -o build/lib.linux-x86_64-3.6/dgl/_ffi/_cy3/core.cpython-36m-x86_64-linux-gnu.so
+creating build/bdist.linux-x86_64/egg
+creating build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/geometry
+creating build/bdist.linux-x86_64/egg/dgl/geometry/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/geometry/pytorch/edge_coarsening.py -> build/bdist.linux-x86_64/egg/dgl/geometry/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/geometry/pytorch/fps.py -> build/bdist.linux-x86_64/egg/dgl/geometry/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/geometry/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/geometry/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/geometry/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/geometry/mxnet/edge_coarsening.py -> build/bdist.linux-x86_64/egg/dgl/geometry/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/geometry/mxnet/fps.py -> build/bdist.linux-x86_64/egg/dgl/geometry/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/geometry/mxnet/__init__.py -> build/bdist.linux-x86_64/egg/dgl/geometry/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/geometry/capi.py -> build/bdist.linux-x86_64/egg/dgl/geometry
+copying build/lib.linux-x86_64-3.6/dgl/geometry/__init__.py -> build/bdist.linux-x86_64/egg/dgl/geometry
+creating build/bdist.linux-x86_64/egg/dgl/function
+copying build/lib.linux-x86_64-3.6/dgl/function/base.py -> build/bdist.linux-x86_64/egg/dgl/function
+copying build/lib.linux-x86_64-3.6/dgl/function/message.py -> build/bdist.linux-x86_64/egg/dgl/function
+copying build/lib.linux-x86_64-3.6/dgl/function/reducer.py -> build/bdist.linux-x86_64/egg/dgl/function
+copying build/lib.linux-x86_64-3.6/dgl/function/__init__.py -> build/bdist.linux-x86_64/egg/dgl/function
+copying build/lib.linux-x86_64-3.6/dgl/partition.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/nn
+creating build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/glob.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/hetero.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/sparse_emb.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/utils.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/agnnconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/relgraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/appnpconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/twirlsconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/graphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/densechebconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/gcn2conv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/ginconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/dotgatconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/cfconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/gmmconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/sageconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/densesageconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/edgeconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/nnconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/gatedgraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/atomicconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/tagconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/densegraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/chebconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/sgconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/conv/gatconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/factory.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/nn/pytorch/softmax.py -> build/bdist.linux-x86_64/egg/dgl/nn/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/glob.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/hetero.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/utils.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet
+creating build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/agnnconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/relgraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/appnpconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/graphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/densechebconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/ginconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/gmmconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/sageconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/densesageconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/edgeconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/nnconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/gatedgraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/tagconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/densegraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/chebconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/sgconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/conv/gatconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/nn/mxnet/softmax.py -> build/bdist.linux-x86_64/egg/dgl/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/nn/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn
+creating build/bdist.linux-x86_64/egg/dgl/nn/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/glob.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/hetero.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/utils.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow
+creating build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/relgraphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/appnpconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/graphconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/densechebconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/ginconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/sageconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/edgeconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/chebconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/sgconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/conv/gatconv.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/nn/tensorflow/softmax.py -> build/bdist.linux-x86_64/egg/dgl/nn/tensorflow
+creating build/bdist.linux-x86_64/egg/dgl/nn/functional
+copying build/lib.linux-x86_64-3.6/dgl/nn/functional/__init__.py -> build/bdist.linux-x86_64/egg/dgl/nn/functional
+copying build/lib.linux-x86_64-3.6/dgl/core.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/subgraph.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/contrib
+copying build/lib.linux-x86_64-3.6/dgl/contrib/dis_kvstore.py -> build/bdist.linux-x86_64/egg/dgl/contrib
+copying build/lib.linux-x86_64-3.6/dgl/contrib/graph_store.py -> build/bdist.linux-x86_64/egg/dgl/contrib
+creating build/bdist.linux-x86_64/egg/dgl/contrib/sampling
+copying build/lib.linux-x86_64-3.6/dgl/contrib/sampling/sampler.py -> build/bdist.linux-x86_64/egg/dgl/contrib/sampling
+copying build/lib.linux-x86_64-3.6/dgl/contrib/sampling/randomwalk.py -> build/bdist.linux-x86_64/egg/dgl/contrib/sampling
+copying build/lib.linux-x86_64-3.6/dgl/contrib/sampling/dis_sampler.py -> build/bdist.linux-x86_64/egg/dgl/contrib/sampling
+copying build/lib.linux-x86_64-3.6/dgl/contrib/sampling/__init__.py -> build/bdist.linux-x86_64/egg/dgl/contrib/sampling
+creating build/bdist.linux-x86_64/egg/dgl/contrib/data
+copying build/lib.linux-x86_64-3.6/dgl/contrib/data/knowledge_graph.py -> build/bdist.linux-x86_64/egg/dgl/contrib/data
+copying build/lib.linux-x86_64-3.6/dgl/contrib/data/__init__.py -> build/bdist.linux-x86_64/egg/dgl/contrib/data
+copying build/lib.linux-x86_64-3.6/dgl/contrib/__init__.py -> build/bdist.linux-x86_64/egg/dgl/contrib
+copying build/lib.linux-x86_64-3.6/dgl/traversal.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/utils
+copying build/lib.linux-x86_64-3.6/dgl/utils/checks.py -> build/bdist.linux-x86_64/egg/dgl/utils
+copying build/lib.linux-x86_64-3.6/dgl/utils/internal.py -> build/bdist.linux-x86_64/egg/dgl/utils
+copying build/lib.linux-x86_64-3.6/dgl/utils/data.py -> build/bdist.linux-x86_64/egg/dgl/utils
+copying build/lib.linux-x86_64-3.6/dgl/utils/__init__.py -> build/bdist.linux-x86_64/egg/dgl/utils
+copying build/lib.linux-x86_64-3.6/dgl/utils/shared_mem.py -> build/bdist.linux-x86_64/egg/dgl/utils
+creating build/bdist.linux-x86_64/egg/dgl/multiprocessing
+copying build/lib.linux-x86_64-3.6/dgl/multiprocessing/pytorch.py -> build/bdist.linux-x86_64/egg/dgl/multiprocessing
+copying build/lib.linux-x86_64-3.6/dgl/multiprocessing/__init__.py -> build/bdist.linux-x86_64/egg/dgl/multiprocessing
+copying build/lib.linux-x86_64-3.6/dgl/base.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/optim
+creating build/bdist.linux-x86_64/egg/dgl/optim/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/optim/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/optim/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/optim/pytorch/sparse_optim.py -> build/bdist.linux-x86_64/egg/dgl/optim/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/optim/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/optim/mxnet/__init__.py -> build/bdist.linux-x86_64/egg/dgl/optim/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/optim/__init__.py -> build/bdist.linux-x86_64/egg/dgl/optim
+creating build/bdist.linux-x86_64/egg/dgl/optim/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/optim/tensorflow/__init__.py -> build/bdist.linux-x86_64/egg/dgl/optim/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/heterograph_index.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/sparse.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/dataloading
+copying build/lib.linux-x86_64-3.6/dgl/dataloading/neighbor.py -> build/bdist.linux-x86_64/egg/dgl/dataloading
+copying build/lib.linux-x86_64-3.6/dgl/dataloading/dataloader.py -> build/bdist.linux-x86_64/egg/dgl/dataloading
+creating build/bdist.linux-x86_64/egg/dgl/dataloading/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/dataloading/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/dataloading/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/dataloading/negative_sampler.py -> build/bdist.linux-x86_64/egg/dgl/dataloading
+copying build/lib.linux-x86_64-3.6/dgl/dataloading/async_transferer.py -> build/bdist.linux-x86_64/egg/dgl/dataloading
+copying build/lib.linux-x86_64-3.6/dgl/dataloading/__init__.py -> build/bdist.linux-x86_64/egg/dgl/dataloading
+copying build/lib.linux-x86_64-3.6/dgl/_api_internal.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/heterograph.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/backend
+copying build/lib.linux-x86_64-3.6/dgl/backend/backend.py -> build/bdist.linux-x86_64/egg/dgl/backend
+creating build/bdist.linux-x86_64/egg/dgl/backend/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/backend/pytorch/sparse.py -> build/bdist.linux-x86_64/egg/dgl/backend/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/backend/pytorch/tensor.py -> build/bdist.linux-x86_64/egg/dgl/backend/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/backend/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/backend/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/backend/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/backend/mxnet/sparse.py -> build/bdist.linux-x86_64/egg/dgl/backend/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/backend/mxnet/tensor.py -> build/bdist.linux-x86_64/egg/dgl/backend/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/backend/mxnet/__init__.py -> build/bdist.linux-x86_64/egg/dgl/backend/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/backend/mxnet/sparse_optim.py -> build/bdist.linux-x86_64/egg/dgl/backend/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/backend/__init__.py -> build/bdist.linux-x86_64/egg/dgl/backend
+creating build/bdist.linux-x86_64/egg/dgl/backend/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/backend/tensorflow/sparse.py -> build/bdist.linux-x86_64/egg/dgl/backend/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/backend/tensorflow/tensor.py -> build/bdist.linux-x86_64/egg/dgl/backend/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/backend/tensorflow/__init__.py -> build/bdist.linux-x86_64/egg/dgl/backend/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/backend/tensorflow/sparse_optim.py -> build/bdist.linux-x86_64/egg/dgl/backend/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/backend/set_default_backend.py -> build/bdist.linux-x86_64/egg/dgl/backend
+copying build/lib.linux-x86_64-3.6/dgl/network.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/ops
+copying build/lib.linux-x86_64-3.6/dgl/ops/edge_softmax.py -> build/bdist.linux-x86_64/egg/dgl/ops
+copying build/lib.linux-x86_64-3.6/dgl/ops/sddmm.py -> build/bdist.linux-x86_64/egg/dgl/ops
+copying build/lib.linux-x86_64-3.6/dgl/ops/segment.py -> build/bdist.linux-x86_64/egg/dgl/ops
+copying build/lib.linux-x86_64-3.6/dgl/ops/__init__.py -> build/bdist.linux-x86_64/egg/dgl/ops
+copying build/lib.linux-x86_64-3.6/dgl/ops/spmm.py -> build/bdist.linux-x86_64/egg/dgl/ops
+copying build/lib.linux-x86_64-3.6/dgl/graph_index.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/cuda
+copying build/lib.linux-x86_64-3.6/dgl/cuda/nccl.py -> build/bdist.linux-x86_64/egg/dgl/cuda
+copying build/lib.linux-x86_64-3.6/dgl/cuda/__init__.py -> build/bdist.linux-x86_64/egg/dgl/cuda
+copying build/lib.linux-x86_64-3.6/dgl/udf.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/ndarray.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/transform.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/init.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/view.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/sampling
+copying build/lib.linux-x86_64-3.6/dgl/sampling/neighbor.py -> build/bdist.linux-x86_64/egg/dgl/sampling
+copying build/lib.linux-x86_64-3.6/dgl/sampling/pinsage.py -> build/bdist.linux-x86_64/egg/dgl/sampling
+copying build/lib.linux-x86_64-3.6/dgl/sampling/randomwalks.py -> build/bdist.linux-x86_64/egg/dgl/sampling
+copying build/lib.linux-x86_64-3.6/dgl/sampling/__init__.py -> build/bdist.linux-x86_64/egg/dgl/sampling
+copying build/lib.linux-x86_64-3.6/dgl/generators.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/qm7b.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/graph_serialize.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/dgl_dataset.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/knowledge_graph.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/qm9_edge.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/qm9.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/icews18.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/gdelt.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/utils.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/sbm.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/karate.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/citation_graph.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/rdf.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/bitcoinotc.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/ppi.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/tensor_serialize.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/heterograph_serialize.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/gnn_benckmark.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/tu.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/__init__.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/gindt.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/tree.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/fakenews.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/fraud.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/minigc.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/data/reddit.py -> build/bdist.linux-x86_64/egg/dgl/data
+copying build/lib.linux-x86_64-3.6/dgl/convert.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/container.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/readout.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/__init__.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/dist_graph.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/graph_partition_book.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/partition.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+creating build/bdist.linux-x86_64/egg/dgl/distributed/nn
+creating build/bdist.linux-x86_64/egg/dgl/distributed/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/distributed/nn/pytorch/sparse_emb.py -> build/bdist.linux-x86_64/egg/dgl/distributed/nn/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/distributed/nn/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/nn/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/distributed/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/distributed/nn/mxnet/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/nn/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/distributed/nn/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/nn
+creating build/bdist.linux-x86_64/egg/dgl/distributed/nn/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/distributed/nn/tensorflow/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/nn/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/distributed/sparse_emb.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+creating build/bdist.linux-x86_64/egg/dgl/distributed/optim
+creating build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/distributed/optim/pytorch/utils.py -> build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/distributed/optim/pytorch/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch
+copying build/lib.linux-x86_64-3.6/dgl/distributed/optim/pytorch/sparse_optim.py -> build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch
+creating build/bdist.linux-x86_64/egg/dgl/distributed/optim/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/distributed/optim/mxnet/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/optim/mxnet
+copying build/lib.linux-x86_64-3.6/dgl/distributed/optim/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/optim
+creating build/bdist.linux-x86_64/egg/dgl/distributed/optim/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/distributed/optim/tensorflow/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed/optim/tensorflow
+copying build/lib.linux-x86_64-3.6/dgl/distributed/standalone_kvstore.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/graph_services.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/role.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/constants.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/rpc_server.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/kvstore.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/dist_context.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/rpc.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/rpc_client.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/id_map.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/server_state.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/__init__.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/shared_mem_utils.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/dist_tensor.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+copying build/lib.linux-x86_64-3.6/dgl/distributed/dist_dataloader.py -> build/bdist.linux-x86_64/egg/dgl/distributed
+creating build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/nodeflow.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/udf.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/view.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/kernel.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+creating build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/spmv.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/degree_bucketing.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/scheduler.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/adapter.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/runtime.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime
+creating build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/ir/program.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/ir/executor.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/ir/var.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/ir/registry.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/runtime/ir/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/graph.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/_deprecate/frame.py -> build/bdist.linux-x86_64/egg/dgl/_deprecate
+copying build/lib.linux-x86_64-3.6/dgl/propagate.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/batch.py -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/runtime_ctypes.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/function.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/libinfo.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/base.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+creating build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_ctypes/function.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_ctypes/types.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_ctypes/ndarray.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_ctypes/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_ctypes/object.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/ndarray.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/object_generic.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/object.py -> build/bdist.linux-x86_64/egg/dgl/_ffi
+creating build/bdist.linux-x86_64/egg/dgl/_ffi/_cy3
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_cy3/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_cy3
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_cy3/core.cpython-36m-x86_64-linux-gnu.so -> build/bdist.linux-x86_64/egg/dgl/_ffi/_cy3
+creating build/bdist.linux-x86_64/egg/dgl/_ffi/_cy2
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_cy2/__init__.py -> build/bdist.linux-x86_64/egg/dgl/_ffi/_cy2
+creating build/bdist.linux-x86_64/egg/dgl/_ffi/_cython
+copying build/lib.linux-x86_64-3.6/dgl/_ffi/_cython/core.cpp -> build/bdist.linux-x86_64/egg/dgl/_ffi/_cython
+copying build/lib.linux-x86_64-3.6/dgl/frame.py -> build/bdist.linux-x86_64/egg/dgl
+copying build/lib.linux-x86_64-3.6/dgl/random.py -> build/bdist.linux-x86_64/egg/dgl
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/pytorch/edge_coarsening.py to edge_coarsening.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/pytorch/fps.py to fps.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/mxnet/edge_coarsening.py to edge_coarsening.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/mxnet/fps.py to fps.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/mxnet/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/capi.py to capi.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/geometry/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/function/base.py to base.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/function/message.py to message.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/function/reducer.py to reducer.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/function/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/partition.py to partition.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/glob.py to glob.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/hetero.py to hetero.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/sparse_emb.py to sparse_emb.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/utils.py to utils.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/agnnconv.py to agnnconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/relgraphconv.py to relgraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/appnpconv.py to appnpconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/twirlsconv.py to twirlsconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/graphconv.py to graphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/densechebconv.py to densechebconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/gcn2conv.py to gcn2conv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/ginconv.py to ginconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/dotgatconv.py to dotgatconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/cfconv.py to cfconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/gmmconv.py to gmmconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/sageconv.py to sageconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/densesageconv.py to densesageconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/edgeconv.py to edgeconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/nnconv.py to nnconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/gatedgraphconv.py to gatedgraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/atomicconv.py to atomicconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/tagconv.py to tagconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/densegraphconv.py to densegraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/chebconv.py to chebconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/sgconv.py to sgconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/conv/gatconv.py to gatconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/factory.py to factory.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/pytorch/softmax.py to softmax.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/glob.py to glob.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/hetero.py to hetero.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/utils.py to utils.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/agnnconv.py to agnnconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/relgraphconv.py to relgraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/appnpconv.py to appnpconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/graphconv.py to graphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/densechebconv.py to densechebconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/ginconv.py to ginconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/gmmconv.py to gmmconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/sageconv.py to sageconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/densesageconv.py to densesageconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/edgeconv.py to edgeconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/nnconv.py to nnconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/gatedgraphconv.py to gatedgraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/tagconv.py to tagconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/densegraphconv.py to densegraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/chebconv.py to chebconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/sgconv.py to sgconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/conv/gatconv.py to gatconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/mxnet/softmax.py to softmax.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/glob.py to glob.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/hetero.py to hetero.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/utils.py to utils.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/relgraphconv.py to relgraphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/appnpconv.py to appnpconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/graphconv.py to graphconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/densechebconv.py to densechebconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/ginconv.py to ginconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/sageconv.py to sageconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/edgeconv.py to edgeconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/chebconv.py to chebconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/sgconv.py to sgconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/conv/gatconv.py to gatconv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/tensorflow/softmax.py to softmax.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/nn/functional/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/core.py to core.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/subgraph.py to subgraph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/dis_kvstore.py to dis_kvstore.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/graph_store.py to graph_store.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/sampling/sampler.py to sampler.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/sampling/randomwalk.py to randomwalk.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/sampling/dis_sampler.py to dis_sampler.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/sampling/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/data/knowledge_graph.py to knowledge_graph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/data/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/contrib/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/traversal.py to traversal.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/utils/checks.py to checks.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/utils/internal.py to internal.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/utils/data.py to data.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/utils/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/utils/shared_mem.py to shared_mem.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/multiprocessing/pytorch.py to pytorch.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/multiprocessing/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/base.py to base.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/optim/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/optim/pytorch/sparse_optim.py to sparse_optim.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/optim/mxnet/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/optim/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/optim/tensorflow/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/heterograph_index.py to heterograph_index.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/sparse.py to sparse.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/dataloading/neighbor.py to neighbor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/dataloading/dataloader.py to dataloader.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/dataloading/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/dataloading/negative_sampler.py to negative_sampler.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/dataloading/async_transferer.py to async_transferer.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/dataloading/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_api_internal.py to _api_internal.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/heterograph.py to heterograph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/backend.py to backend.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/pytorch/sparse.py to sparse.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/pytorch/tensor.py to tensor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/mxnet/sparse.py to sparse.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/mxnet/tensor.py to tensor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/mxnet/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/mxnet/sparse_optim.py to sparse_optim.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/tensorflow/sparse.py to sparse.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/tensorflow/tensor.py to tensor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/tensorflow/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/tensorflow/sparse_optim.py to sparse_optim.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/backend/set_default_backend.py to set_default_backend.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/network.py to network.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/ops/edge_softmax.py to edge_softmax.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/ops/sddmm.py to sddmm.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/ops/segment.py to segment.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/ops/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/ops/spmm.py to spmm.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/graph_index.py to graph_index.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/cuda/nccl.py to nccl.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/cuda/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/udf.py to udf.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/ndarray.py to ndarray.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/transform.py to transform.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/init.py to init.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/view.py to view.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/sampling/neighbor.py to neighbor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/sampling/pinsage.py to pinsage.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/sampling/randomwalks.py to randomwalks.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/sampling/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/generators.py to generators.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/qm7b.py to qm7b.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/graph_serialize.py to graph_serialize.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/dgl_dataset.py to dgl_dataset.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/knowledge_graph.py to knowledge_graph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/qm9_edge.py to qm9_edge.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/qm9.py to qm9.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/icews18.py to icews18.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/gdelt.py to gdelt.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/utils.py to utils.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/sbm.py to sbm.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/karate.py to karate.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/citation_graph.py to citation_graph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/rdf.py to rdf.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/bitcoinotc.py to bitcoinotc.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/ppi.py to ppi.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/tensor_serialize.py to tensor_serialize.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/heterograph_serialize.py to heterograph_serialize.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/gnn_benckmark.py to gnn_benckmark.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/tu.py to tu.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/gindt.py to gindt.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/tree.py to tree.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/fakenews.py to fakenews.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/fraud.py to fraud.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/minigc.py to minigc.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/data/reddit.py to reddit.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/convert.py to convert.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/container.py to container.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/readout.py to readout.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/dist_graph.py to dist_graph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/graph_partition_book.py to graph_partition_book.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/partition.py to partition.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/nn/pytorch/sparse_emb.py to sparse_emb.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/nn/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/nn/mxnet/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/nn/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/nn/tensorflow/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/sparse_emb.py to sparse_emb.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch/utils.py to utils.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/optim/pytorch/sparse_optim.py to sparse_optim.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/optim/mxnet/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/optim/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/optim/tensorflow/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/standalone_kvstore.py to standalone_kvstore.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/graph_services.py to graph_services.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/role.py to role.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/constants.py to constants.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/rpc_server.py to rpc_server.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/kvstore.py to kvstore.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/dist_context.py to dist_context.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/rpc.py to rpc.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/rpc_client.py to rpc_client.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/id_map.py to id_map.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/server_state.py to server_state.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/shared_mem_utils.py to shared_mem_utils.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/dist_tensor.py to dist_tensor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/distributed/dist_dataloader.py to dist_dataloader.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/nodeflow.py to nodeflow.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/udf.py to udf.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/view.py to view.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/kernel.py to kernel.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/spmv.py to spmv.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/degree_bucketing.py to degree_bucketing.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/scheduler.py to scheduler.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/adapter.py to adapter.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/runtime.py to runtime.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir/program.py to program.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir/executor.py to executor.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir/var.py to var.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir/registry.py to registry.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/runtime/ir/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/graph.py to graph.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_deprecate/frame.py to frame.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/propagate.py to propagate.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/batch.py to batch.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/runtime_ctypes.py to runtime_ctypes.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/function.py to function.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/libinfo.py to libinfo.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/base.py to base.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes/function.py to function.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes/types.py to types.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes/ndarray.py to ndarray.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_ctypes/object.py to object.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/ndarray.py to ndarray.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/object_generic.py to object_generic.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/object.py to object.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_cy3/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_cy2/__init__.py to __init__.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/frame.py to frame.cpython-36.pyc
+byte-compiling build/bdist.linux-x86_64/egg/dgl/random.py to random.cpython-36.pyc
+creating stub loader for dgl/_ffi/_cy3/core.cpython-36m-x86_64-linux-gnu.so
+byte-compiling build/bdist.linux-x86_64/egg/dgl/_ffi/_cy3/core.py to core.cpython-36.pyc
+installing package data to build/bdist.linux-x86_64/egg
+running install_data
+copying ../build/libdgl.so -> build/bdist.linux-x86_64/egg/dgl
+creating build/bdist.linux-x86_64/egg/dgl/tensoradapter
+creating build/bdist.linux-x86_64/egg/dgl/tensoradapter/pytorch
+creating build/bdist.linux-x86_64/egg/EGG-INFO
+copying dgl.egg-info/PKG-INFO -> build/bdist.linux-x86_64/egg/EGG-INFO
+copying dgl.egg-info/SOURCES.txt -> build/bdist.linux-x86_64/egg/EGG-INFO
+copying dgl.egg-info/dependency_links.txt -> build/bdist.linux-x86_64/egg/EGG-INFO
+copying dgl.egg-info/not-zip-safe -> build/bdist.linux-x86_64/egg/EGG-INFO
+copying dgl.egg-info/requires.txt -> build/bdist.linux-x86_64/egg/EGG-INFO
+copying dgl.egg-info/top_level.txt -> build/bdist.linux-x86_64/egg/EGG-INFO
+writing build/bdist.linux-x86_64/egg/EGG-INFO/native_libs.txt
+creating 'dist/dgl-0.7-py3.6-linux-x86_64.egg' and adding 'build/bdist.linux-x86_64/egg' to it
+removing 'build/bdist.linux-x86_64/egg' (and everything under it)
+Processing dgl-0.7-py3.6-linux-x86_64.egg
+removing '/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg' (and everything under it)
+creating /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg
+Extracting dgl-0.7-py3.6-linux-x86_64.egg to /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages
+dgl 0.7 is already the active version in easy-install.pth
+
+Installed /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg
+Processing dependencies for dgl==0.7
+Searching for matplotlib>=3.3
+Reading https://pypi.org/simple/matplotlib/
+Downloading https://files.pythonhosted.org/packages/60/d3/286925802edaeb0b8834425ad97c9564ff679eb4208a184533969aa5fc29/matplotlib-3.4.2.tar.gz#sha256=d8d994cefdff9aaba45166eb3de4f5211adb4accac85cbf97137e98f26ea0219
+Best match: matplotlib 3.4.2
+Processing matplotlib-3.4.2.tar.gz
+Writing /tmp/easy_install-2z59p2h0/matplotlib-3.4.2/setup.cfg
+Running matplotlib-3.4.2/setup.py -q bdist_egg --dist-dir /tmp/easy_install-2z59p2h0/matplotlib-3.4.2/egg-dist-tmp-5bzm1rgp
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/Cython/Compiler/Main.py:369: FutureWarning: Cython directive 'language_level' not set, using 2 for now (Py2). This will change in a later release! File: /home/ubuntu/dgl/python/dgl/_ffi/_cython/core.pyx
+  tree = Parsing.p_module(s, pxd, full_module_name)
+error: Setup script exited with 
+Beginning with Matplotlib 3.4, Python 3.7 or above is required.
+You are using Python 3.6.13.
+
+This may be due to an out of date pip.
+
+Make sure you have pip >= 9.0.1.
+

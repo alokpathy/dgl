@@ -161,3 +161,6 @@ cscope.*
 config.cmake
 .ycm_extra_conf.py
 **.png
+
+# ogb data
+examples/pytorch/gat/dataset

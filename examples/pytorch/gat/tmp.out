@@ -1,0 +1,60 @@
+Using backend: pytorch
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg/dgl/data/utils.py:285: UserWarning: Property dataset.num_labels will be deprecated, please use dataset.num_classes instead.
+  warnings.warn('Property {} will be deprecated, please use {} instead.'.format(old, new))
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg/dgl/data/utils.py:285: UserWarning: Property dataset.graph will be deprecated, please use dataset[0] instead.
+  warnings.warn('Property {} will be deprecated, please use {} instead.'.format(old, new))
+Namespace(attn_drop=0.6, dataset='pubmed', early_stop=False, epochs=4, fastmode=False, gpu=0, in_drop=0.6, lr=0.005, negative_slope=0.2, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, residual=False, weight_decay=0.0005)
+  NumNodes: 19717
+  NumEdges: 88651
+  NumFeats: 500
+  NumClasses: 3
+  NumTrainingSamples: 60
+  NumValidationSamples: 500
+  NumTestSamples: 1000
+Done loading data from cached files.
+----Data statistics------'
+      #Edges 88651
+      #Classes 3
+      #Train samples 60
+      #Val samples 500
+      #Test samples 1000
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=500, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=3, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                           Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                        rf-spmm         5.33%     238.672us        25.34%       1.134ms     566.838us     122.528us         2.56%     742.528us     371.264us             2  
+                     rf-softmax         3.87%     173.160us        24.13%       1.080ms     539.907us      94.848us         1.98%       1.035ms     517.520us             2  
+                          GSpMM        18.48%     826.738us        19.97%     893.320us     446.660us     554.976us        11.60%     620.000us     310.000us             2  
+                    EdgeSoftmax        11.21%     501.474us        18.24%     815.917us     407.959us     594.240us        12.42%     851.520us     425.760us             2  
+                    aten::zeros         5.90%     264.174us        14.51%     649.392us      18.039us     224.832us         4.70%     504.960us      14.027us            36  
+                       rf-sddmm         4.52%     202.252us         9.46%     423.329us     211.664us     107.040us         2.24%     306.656us     153.328us             2  
+           rf-attn-dot-products         1.97%      88.156us         7.23%     323.635us     161.818us      39.552us         0.83%     505.376us     252.688us             2  
+                    aten::zero_         3.44%     153.830us         6.85%     306.455us       8.513us     109.119us         2.28%     280.128us       7.781us            36  
+                         GSDDMM         3.36%     150.324us         4.89%     218.825us     109.413us     143.104us         2.99%     199.616us      99.808us             2  
+                          rf-FC         1.39%      62.243us         4.61%     206.465us     103.232us       7.744us         0.16%     703.392us     351.696us             2  
+    rf-attn-dot-products-update         4.08%     182.760us         4.13%     184.630us      92.315us      94.176us         1.97%      94.176us      47.088us             2  
+                  aten::dropout         0.74%      33.070us         3.98%     177.909us      44.477us      21.569us         0.45%     615.488us     153.872us             4  
+                       aten::eq         1.73%      77.329us         3.82%     170.981us      42.745us      82.880us         1.73%     170.016us      42.504us             4  
+                  rf-leaky_relu         2.07%      92.637us         3.56%     159.400us      79.700us      51.200us         1.07%     118.784us      59.392us             2  
+                    aten::empty         3.56%     159.244us         3.56%     159.244us       1.896us       0.000us         0.00%       0.000us       0.000us            84  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 4.474ms
+Self CUDA time total: 4.784ms
+
+
+Test Accuracy 0.3320

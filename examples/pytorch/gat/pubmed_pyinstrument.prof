@@ -1,0 +1,119 @@
+Using backend: pytorch
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg/dgl/data/utils.py:285: UserWarning: Property dataset.num_labels will be deprecated, please use dataset.num_classes instead.
+  warnings.warn('Property {} will be deprecated, please use {} instead.'.format(old, new))
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg/dgl/data/utils.py:285: UserWarning: Property dataset.graph will be deprecated, please use dataset[0] instead.
+  warnings.warn('Property {} will be deprecated, please use {} instead.'.format(old, new))
+Namespace(attn_drop=0.6, dataset='pubmed', early_stop=False, epochs=200, fastmode=False, gpu=0, in_drop=0.6, lr=0.005, negative_slope=0.2, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, residual=False, weight_decay=0.0005)
+  NumNodes: 19717
+  NumEdges: 88651
+  NumFeats: 500
+  NumClasses: 3
+  NumTrainingSamples: 60
+  NumValidationSamples: 500
+  NumTestSamples: 1000
+Done loading data from cached files.
+----Data statistics------'
+      #Edges 88651
+      #Classes 3
+      #Train samples 60
+      #Val samples 500
+      #Test samples 1000
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=500, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=3, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+
+  _     ._   __/__   _ _  _  _ _/_   Recorded: 23:51:15  Samples:  1676
+ /_//_/// /_\ / //_// / //_'/ //     Duration: 2.564     CPU time: 2.569
+/   _/                      v3.4.2
+
+Program: train.py --dataset=pubmed --gpu=0
+
+[31m2.564[0m [48;5;24m[38;5;15mmain[0m  [2mtrain.py:42[0m
+├─ [33m1.146[0m _call_impl[0m  [2mtorch/nn/modules/module.py:866[0m
+│  └─ [33m1.134[0m [48;5;24m[38;5;15mforward[0m  [2mgat.py:49[0m
+│     ├─ [33m1.045[0m _call_impl[0m  [2mtorch/nn/modules/module.py:866[0m
+│     │  └─ [33m1.023[0m forward[0m  [2mdgl/nn/pytorch/conv/gatconv.py:220[0m
+│     │     ├─ [32m0.374[0m edge_softmax[0m  [2mdgl/ops/edge_softmax.py:9[0m
+│     │     │  └─ [32m0.374[0m edge_softmax[0m  [2mdgl/backend/pytorch/sparse.py:373[0m
+│     │     │     └─ [32m0.369[0m decorate_fwd[0m  [2mtorch/cuda/amp/autocast_mode.py:205[0m
+│     │     │        └─ [32m0.366[0m forward[0m  [2mdgl/backend/pytorch/sparse.py:210[0m
+│     │     │           ├─ [32m0.266[0m _gspmm[0m  [2mdgl/sparse.py:77[0m
+│     │     │           │  ├─ [92m[2m0.108[0m [self][0m  [2m[0m
+│     │     │           │  ├─ [92m[2m0.056[0m zeros[0m  [2mdgl/backend/pytorch/tensor.py:218[0m
+│     │     │           │  │  └─ [92m[2m0.053[0m _VariableFunctionsClass.zeros[0m  [2m<built-in>:0[0m
+│     │     │           │  └─ [92m[2m0.031[0m to_dgl_nd_for_write[0m  [2mdgl/sparse.py:62[0m
+│     │     │           │     └─ [92m[2m0.029[0m zerocopy_to_dgl_ndarray_for_write[0m  [2mdgl/backend/pytorch/tensor.py:331[0m
+│     │     │           │        └─ [92m[2m0.028[0m zerocopy_to_dgl_ndarray[0m  [2mdgl/backend/pytorch/tensor.py:328[0m
+│     │     │           └─ [92m[2m0.099[0m _gsddmm[0m  [2mdgl/sparse.py:182[0m
+│     │     │              ├─ [92m[2m0.035[0m zeros[0m  [2mdgl/backend/pytorch/tensor.py:218[0m
+│     │     │              │  └─ [92m[2m0.034[0m _VariableFunctionsClass.zeros[0m  [2m<built-in>:0[0m
+│     │     │              └─ [92m[2m0.027[0m [self][0m  [2m[0m
+│     │     ├─ [32m0.326[0m in_degrees[0m  [2mdgl/heterograph.py:3347[0m
+│     │     │  └─ [32m0.308[0m in_degrees[0m  [2mdgl/heterograph_index.py:560[0m
+│     │     └─ [32m0.244[0m update_all[0m  [2mdgl/heterograph.py:4628[0m
+│     │        └─ [32m0.244[0m message_passing[0m  [2mdgl/core.py:261[0m
+│     │           └─ [32m0.244[0m invoke_gspmm[0m  [2mdgl/core.py:214[0m
+│     │              └─ [32m0.244[0m func[0m  [2mdgl/ops/spmm.py:127[0m
+│     │                 └─ [32m0.244[0m gspmm[0m  [2mdgl/ops/spmm.py:10[0m
+│     │                    └─ [32m0.244[0m gspmm[0m  [2mdgl/backend/pytorch/sparse.py:365[0m
+│     │                       └─ [32m0.244[0m decorate_fwd[0m  [2mtorch/cuda/amp/autocast_mode.py:205[0m
+│     │                          └─ [32m0.244[0m forward[0m  [2mdgl/backend/pytorch/sparse.py:87[0m
+│     │                             └─ [32m0.244[0m _gspmm[0m  [2mdgl/sparse.py:77[0m
+│     ├─ [92m[2m0.036[0m Tensor.flatten[0m  [2m<built-in>:0[0m
+│     └─ [92m[2m0.029[0m __getitem__[0m  [2mtorch/nn/modules/container.py:161[0m
+├─ [33m0.660[0m [48;5;24m[38;5;15mevaluate[0m  [2mtrain.py:33[0m
+│  ├─ [32m0.450[0m _call_impl[0m  [2mtorch/nn/modules/module.py:866[0m
+│  │  └─ [32m0.450[0m [48;5;24m[38;5;15mforward[0m  [2mgat.py:49[0m
+│  │     └─ [32m0.449[0m _call_impl[0m  [2mtorch/nn/modules/module.py:866[0m
+│  │        └─ [32m0.447[0m forward[0m  [2mdgl/nn/pytorch/conv/gatconv.py:220[0m
+│  │           ├─ [32m0.225[0m edge_softmax[0m  [2mdgl/ops/edge_softmax.py:9[0m
+│  │           │  └─ [32m0.225[0m edge_softmax[0m  [2mdgl/backend/pytorch/sparse.py:373[0m
+│  │           │     └─ [32m0.225[0m decorate_fwd[0m  [2mtorch/cuda/amp/autocast_mode.py:205[0m
+│  │           │        └─ [32m0.225[0m forward[0m  [2mdgl/backend/pytorch/sparse.py:210[0m
+│  │           │           ├─ [92m[2m0.117[0m _gspmm[0m  [2mdgl/sparse.py:77[0m
+│  │           │           │  ├─ [92m[2m0.035[0m zeros[0m  [2mdgl/backend/pytorch/tensor.py:218[0m
+│  │           │           │  │  └─ [92m[2m0.034[0m _VariableFunctionsClass.zeros[0m  [2m<built-in>:0[0m
+│  │           │           │  ├─ [92m[2m0.033[0m zerocopy_from_dgl_ndarray[0m  [2mdgl/backend/pytorch/tensor.py:334[0m
+│  │           │           │  └─ [92m[2m0.030[0m [self][0m  [2m[0m
+│  │           │           └─ [92m[2m0.077[0m _gsddmm[0m  [2mdgl/sparse.py:182[0m
+│  │           │              └─ [92m[2m0.032[0m zeros[0m  [2mdgl/backend/pytorch/tensor.py:218[0m
+│  │           │                 └─ [92m[2m0.030[0m _VariableFunctionsClass.zeros[0m  [2m<built-in>:0[0m
+│  │           ├─ [92m[2m0.072[0m update[0m  [2m_collections_abc.py:824[0m
+│  │           │  └─ [92m[2m0.065[0m __setitem__[0m  [2mdgl/view.py:68[0m
+│  │           │     └─ [92m[2m0.062[0m _set_n_repr[0m  [2mdgl/heterograph.py:3958[0m
+│  │           │        └─ [92m[2m0.035[0m update[0m  [2m_collections_abc.py:824[0m
+│  │           │           └─ [92m[2m0.027[0m __setitem__[0m  [2mdgl/frame.py:395[0m
+│  │           │              └─ [92m[2m0.026[0m update_column[0m  [2mdgl/frame.py:466[0m
+│  │           ├─ [92m[2m0.062[0m apply_edges[0m  [2mdgl/heterograph.py:4202[0m
+│  │           │  └─ [92m[2m0.029[0m __getitem__[0m  [2mdgl/heterograph.py:2059[0m
+│  │           ├─ [92m[2m0.035[0m [self][0m  [2m[0m
+│  │           └─ [92m[2m0.032[0m update_all[0m  [2mdgl/heterograph.py:4628[0m
+│  ├─ [32m0.167[0m [self][0m  [2m[0m
+│  └─ [92m[2m0.043[0m eval[0m  [2mtorch/nn/modules/module.py:1452[0m
+│     └─ [92m[2m0.035[0m train[0m  [2mtorch/nn/modules/module.py:1432[0m
+│        └─ [92m[2m0.027[0m __setattr__[0m  [2mtorch/nn/modules/module.py:950[0m
+├─ [33m0.551[0m backward[0m  [2mtorch/tensor.py:195[0m
+│  └─ [33m0.551[0m backward[0m  [2mtorch/autograd/__init__.py:68[0m
+│     └─ [33m0.550[0m _EngineBase.run_backward[0m  [2m<built-in>:0[0m
+├─ [92m[2m0.094[0m [48;5;24m[38;5;15maccuracy[0m  [2mtrain.py:27[0m
+│  ├─ [92m[2m0.043[0m _VariableFunctionsClass.sum[0m  [2m<built-in>:0[0m
+│  └─ [92m[2m0.031[0m Tensor.item[0m  [2m<built-in>:0[0m
+├─ [92m[2m0.086[0m [self][0m  [2m[0m
+└─ [92m[2m0.026[0m zero_grad[0m  [2mtorch/optim/optimizer.py:189[0m
+
+
+
+Test Accuracy 0.7670

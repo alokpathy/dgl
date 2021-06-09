@@ -16,11 +16,14 @@ import torch
 import torch.nn.functional as F
 import dgl
 from dgl.data import register_data_args
-from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
+from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset, RedditDataset
+
+from ogb.nodeproppred import DglNodePropPredDataset
 
 from gat import GAT
 from utils import EarlyStopping
 
+import torch.autograd.profiler as profiler
 
 def accuracy(logits, labels):
     _, indices = torch.max(logits, dim=1)
@@ -36,33 +39,60 @@ def evaluate(model, features, labels, mask):
         labels = labels[mask]
         return accuracy(logits, labels)
 
-
 def main(args):
     # load and preprocess dataset
-    if args.dataset == 'cora':
-        data = CoraGraphDataset()
-    elif args.dataset == 'citeseer':
-        data = CiteseerGraphDataset()
-    elif args.dataset == 'pubmed':
-        data = PubmedGraphDataset()
-    else:
-        raise ValueError('Unknown dataset: {}'.format(args.dataset))
+    if not args.dataset.startswith("ogbn"):
+        if args.dataset == 'cora':
+            data = CoraGraphDataset()
+        elif args.dataset == 'citeseer':
+            data = CiteseerGraphDataset()
+        elif args.dataset == 'pubmed':
+            data = PubmedGraphDataset()
+        else:
+            raise ValueError('Unknown dataset: {}'.format(args.dataset))
 
-    g = data[0]
-    if args.gpu < 0:
-        cuda = False
-    else:
-        cuda = True
-        g = g.int().to(args.gpu)
+        g = data[0]
+        if args.gpu < 0:
+            cuda = False
+        else:
+            cuda = True
+            g = g.int().to(args.gpu)
 
-    features = g.ndata['feat']
-    labels = g.ndata['label']
-    train_mask = g.ndata['train_mask']
-    val_mask = g.ndata['val_mask']
-    test_mask = g.ndata['test_mask']
-    num_feats = features.shape[1]
-    n_classes = data.num_labels
-    n_edges = data.graph.number_of_edges()
+        features = g.ndata['feat']
+        labels = g.ndata['label']
+        train_mask = g.ndata['train_mask']
+        val_mask = g.ndata['val_mask']
+        test_mask = g.ndata['test_mask']
+        num_feats = features.shape[1]
+        n_classes = data.num_labels
+        n_edges = data.graph.number_of_edges()
+    else:
+        dataset = DglNodePropPredDataset(name=args.dataset)
+
+        split_idx = dataset.get_idx_split()
+        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
+        g, labels = dataset[0] 
+
+        if args.gpu < 0:
+            cuda = False
+        else:
+            cuda = True
+            g = g.int().to(args.gpu)
+
+        train_mask = torch.zeros(g.num_nodes())
+        val_mask = torch.zeros(g.num_nodes())
+        test_mask = torch.zeros(g.num_nodes())
+
+        train_mask = train_mask.scatter_(0, train_idx, True)
+        val_mask = val_mask.scatter_(0, valid_idx, True)
+        test_mask = test_mask.scatter_(0, test_idx, True)
+
+        features = g.ndata["feat"]
+        num_feats = features.shape[1]
+        label = labels.squeeze()
+        n_classes = dataset.num_classes
+        n_edges = g.number_of_edges()
+
     print("""----Data statistics------'
       #Edges %d
       #Classes %d
@@ -108,8 +138,10 @@ def main(args):
         model.train()
         if epoch >= 3:
             t0 = time.time()
+    
         # forward
-        logits = model(features)
+        # logits = model(features)
+        logits = model(features, epoch)
         loss = loss_fcn(logits[train_mask], labels[train_mask])
 
         optimizer.zero_grad()
@@ -129,10 +161,11 @@ def main(args):
                 if stopper.step(val_acc, model):
                     break
 
-        print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
-              " ValAcc {:.4f} | ETputs(KTEPS) {:.2f}".
-              format(epoch, np.mean(dur), loss.item(), train_acc,
-                     val_acc, n_edges / np.mean(dur) / 1000))
+        # print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
+        #       " ValAcc {:.4f} | ETputs(KTEPS) {:.2f}".
+        #       format(epoch, np.mean(dur), loss.item(), train_acc,
+        #              val_acc, n_edges / np.mean(dur) / 1000))
+    # print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=15))
 
     print()
     if args.early_stop:

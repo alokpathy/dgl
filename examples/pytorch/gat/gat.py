@@ -12,6 +12,7 @@ import torch.nn as nn
 import dgl.function as fn
 from dgl.nn import GATConv
 
+import torch.autograd.profiler as profiler
 
 class GAT(nn.Module):
     def __init__(self,
@@ -46,10 +47,20 @@ class GAT(nn.Module):
             num_hidden * heads[-2], num_classes, heads[-1],
             feat_drop, attn_drop, negative_slope, residual, None))
 
-    def forward(self, inputs):
+    def forward(self, inputs, epoch=0):
         h = inputs
         for l in range(self.num_layers):
-            h = self.gat_layers[l](self.g, h).flatten(1)
-        # output projection
-        logits = self.gat_layers[-1](self.g, h).mean(1)
+            if epoch == 3:
+                with profiler.profile(use_cuda=True) as prof:
+                    h = self.gat_layers[l](self.g, h).flatten(1)
+                print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=15))
+            else:
+                h = self.gat_layers[l](self.g, h).flatten(1)
+        if epoch == 3:
+            with profiler.profile(use_cuda=True) as prof:
+                # output projection
+                logits = self.gat_layers[-1](self.g, h).mean(1)
+            print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=15))
+        else:
+            logits = self.gat_layers[-1](self.g, h).mean(1)
         return logits
