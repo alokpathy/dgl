@@ -48,6 +48,8 @@ def main(args):
             data = CiteseerGraphDataset()
         elif args.dataset == 'pubmed':
             data = PubmedGraphDataset()
+        elif args.dataset == 'reddit':
+            data = RedditDataset()
         else:
             raise ValueError('Unknown dataset: {}'.format(args.dataset))
 
@@ -83,13 +85,13 @@ def main(args):
         val_mask = torch.zeros(g.num_nodes())
         test_mask = torch.zeros(g.num_nodes())
 
-        train_mask = train_mask.scatter_(0, train_idx, True)
-        val_mask = val_mask.scatter_(0, valid_idx, True)
-        test_mask = test_mask.scatter_(0, test_idx, True)
+        train_mask = train_mask.scatter_(0, train_idx, True).long().to(args.gpu)
+        val_mask = val_mask.scatter_(0, valid_idx, True).long().to(args.gpu)
+        test_mask = test_mask.scatter_(0, test_idx, True).long().to(args.gpu)
 
         features = g.ndata["feat"]
         num_feats = features.shape[1]
-        label = labels.squeeze()
+        labels = labels.squeeze().to(args.gpu)
         n_classes = dataset.num_classes
         n_edges = g.number_of_edges()
 

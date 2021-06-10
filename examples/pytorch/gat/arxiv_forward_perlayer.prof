@@ -1,0 +1,70 @@
+Using backend: pytorch
+Namespace(attn_drop=0.6, dataset='ogbn-arxiv', early_stop=False, epochs=4, fastmode=False, gpu=0, in_drop=0.6, lr=0.005, negative_slope=0.2, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, residual=False, weight_decay=0.0005)
+----Data statistics------'
+      #Edges 1166243
+      #Classes 40
+      #Train samples 90941
+      #Val samples 29799
+      #Test samples 48603
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=128, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=40, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                           Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                        rf-spmm         1.06%     127.911us        85.39%      10.259ms      10.259ms       2.750us         0.02%       4.053ms       4.053ms             1  
+                          GSpMM        84.05%      10.098ms        84.31%      10.131ms      10.131ms       3.857ms        23.46%       4.050ms       4.050ms             1  
+                     rf-softmax         0.15%      18.558us         3.60%     432.210us     432.210us       3.873us         0.02%       6.572ms       6.572ms             1  
+                    EdgeSoftmax         2.07%     249.243us         3.43%     412.645us     412.645us       5.741ms        34.93%       6.568ms       6.568ms             1  
+                    aten::zeros         1.20%     144.437us         2.86%     344.024us      18.107us      64.352us         0.39%     899.039us      47.318us            19  
+                       rf-sddmm         0.83%     100.042us         1.75%     209.742us     209.742us       2.079us         0.01%     720.896us     720.896us             1  
+           rf-attn-dot-products         0.37%      44.721us         1.37%     164.938us     164.938us       6.977us         0.04%       1.606ms       1.606ms             1  
+                    aten::zero_         0.68%      81.130us         1.31%     157.099us       8.268us      35.008us         0.21%     834.687us      43.931us            19  
+                rf-drop-softmax         0.66%      79.013us         1.06%     127.900us     127.900us       3.519us         0.02%     449.983us     449.983us             1  
+                         GSDDMM         0.62%      74.894us         0.91%     108.995us     108.995us     534.721us         3.25%     718.816us     718.816us             1  
+                          rf-FC         0.27%      32.347us         0.84%     101.522us     101.522us       2.304us         0.01%     741.632us     741.632us             1  
+    rf-attn-dot-products-update         0.79%      95.036us         0.80%      95.729us      95.729us       1.344us         0.01%       1.344us       1.344us             1  
+                       aten::eq         0.34%      40.869us         0.76%      91.594us      45.797us      45.216us         0.28%      92.128us      46.064us             2  
+                  aten::dropout         0.15%      17.813us         0.76%      90.888us      45.444us       9.250us         0.06%       1.368ms     683.776us             2  
+                    aten::empty         0.72%      86.775us         0.72%      86.775us       1.972us       0.000us         0.00%       0.000us       0.000us            44  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 12.015ms
+Self CUDA time total: 16.437ms
+
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                           Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                        rf-spmm         1.60%     133.603us        79.03%       6.586ms       6.586ms      63.105us         0.71%       2.680ms       2.680ms             1  
+                          GSpMM        77.03%       6.420ms        77.42%       6.452ms       6.452ms       2.494ms        28.24%       2.617ms       2.617ms             1  
+                     rf-softmax         0.22%      18.275us         5.13%     427.249us     427.249us       2.528us         0.03%       3.226ms       3.226ms             1  
+                    EdgeSoftmax         2.99%     249.530us         4.90%     408.000us     408.000us       3.098ms        35.09%       3.223ms       3.223ms             1  
+                    aten::zeros         1.71%     142.269us         4.06%     338.557us      17.819us      77.250us         0.87%     299.393us      15.758us            19  
+                       rf-sddmm         1.19%      99.294us         2.51%     209.254us     209.254us       1.824us         0.02%     124.704us     124.704us             1  
+           rf-attn-dot-products         0.53%      44.186us         1.97%     163.863us     163.863us       4.064us         0.05%     969.312us     969.312us             1  
+                    aten::zero_         0.95%      79.196us         1.85%     153.756us       8.092us      34.144us         0.39%     222.144us      11.692us            19  
+                rf-drop-softmax         0.94%      78.018us         1.50%     124.666us     124.666us       1.728us         0.02%      58.240us      58.240us             1  
+                         GSDDMM         0.90%      75.182us         1.31%     108.912us     108.912us      98.304us         1.11%     122.880us     122.880us             1  
+                          rf-FC         0.39%      32.504us         1.20%     100.194us     100.194us       1.152us         0.01%     424.448us     424.448us             1  
+    rf-attn-dot-products-update         1.16%      96.640us         1.17%      97.538us      97.538us       0.672us         0.01%       0.672us       0.672us             1  
+                  aten::dropout         0.19%      16.036us         1.15%      95.718us      47.859us       8.928us         0.10%     534.016us     267.008us             2  
+                       aten::eq         0.49%      41.066us         1.10%      91.679us      45.840us      46.272us         0.52%      93.024us      46.512us             2  
+                   rf-feat-drop         0.46%      38.160us         1.07%      89.118us      89.118us      28.992us         0.33%     506.496us     506.496us             1  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 8.334ms
+Self CUDA time total: 8.829ms
+
+
+Test Accuracy 0.2870
