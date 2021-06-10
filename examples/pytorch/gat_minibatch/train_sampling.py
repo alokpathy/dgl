@@ -93,6 +93,7 @@ def run(args, device, data):
     loss_fcn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+    print(model)
     # Training loop
     avg = 0
     iter_tput = []
@@ -109,7 +110,7 @@ def run(args, device, data):
             blocks = [block.int().to(device) for block in blocks]
 
             # Compute loss and prediction
-            batch_pred = model(blocks, batch_inputs)
+            batch_pred = model(blocks, batch_inputs, epoch, step)
             loss = loss_fcn(batch_pred, batch_labels)
             optimizer.zero_grad()
             loss.backward()
@@ -173,6 +174,7 @@ if __name__ == '__main__':
                                 "be undesired if they cannot fit in GPU memory at once. "
                                 "This flag disables that.")
     args = argparser.parse_args()
+    print(args)
 
     if args.gpu >= 0:
         device = th.device('cuda:%d' % args.gpu)
@@ -186,6 +188,9 @@ if __name__ == '__main__':
     else:
         raise Exception('unknown dataset')
 
+    g = dgl.remove_self_loop(g)
+    g = dgl.add_self_loop(g)
+    print(g)
     if args.inductive:
         train_g, val_g, test_g = inductive_split(g)
         train_nfeat = train_g.ndata.pop('features')

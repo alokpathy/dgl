@@ -8,6 +8,8 @@ import sklearn.linear_model as lm
 import sklearn.metrics as skm
 import tqdm
 
+import torch.autograd.profiler as profiler
+
 class GAT(nn.Module):
     def __init__(self,
                  g,
@@ -43,18 +45,17 @@ class GAT(nn.Module):
             num_hidden * heads[-2], num_classes, heads[-1],
             feat_drop, attn_drop, negative_slope, residual, None))
 
-    def forward(self, blocks, x):
-        # h = x
-        # for l, (layer, block) in enumerate(zip(self.gat_layers, blocks)):
-        #     h = layer(block, h)
-        #     if l != len(self.gat_layers) - 1:
-        #         h = self.activation(h)
-        #         h = self.dropout(h)
-        # return h
+    def forward(self, blocks, x, epoch=0, step=0):
         h = x
         for l, (layer, block) in enumerate(zip(self.gat_layers, blocks)):
             if l != len(self.gat_layers) - 1:
-                h = layer(block, h).flatten(1)
+                if epoch == 2 and step == 0:
+                    print(f"block: {block} h.size: {h.size()}")
+                    with profiler.profile(use_cuda=True) as prof:
+                        h = layer(block, h).flatten(1)
+                    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                else:
+                    h = layer(block, h).flatten(1)
             else:
                 logits = layer(block, h).mean(1)
         return logits

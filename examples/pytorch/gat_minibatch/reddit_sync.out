@@ -1,0 +1,76 @@
+Namespace(attn_drop=0.6, batch_size=1000, data_cpu=False, dataset='reddit', dropout=0.5, eval_every=5, fan_out='10,25', gpu=0, in_drop=0.6, inductive=False, log_every=20, lr=0.003, negative_slope=0.2, num_epochs=3, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, num_workers=4, residual=False, sample_gpu=False)
+Graph(num_nodes=232965, num_edges=114848857,
+      ndata_schemes={'label': Scheme(shape=(), dtype=torch.int64), 'feat': Scheme(shape=(602,), dtype=torch.float32), 'test_mask': Scheme(shape=(), dtype=torch.bool), 'train_mask': Scheme(shape=(), dtype=torch.bool), 'val_mask': Scheme(shape=(), dtype=torch.bool), 'features': Scheme(shape=(602,), dtype=torch.float32), 'labels': Scheme(shape=(), dtype=torch.int64)}
+      edata_schemes={})
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=602, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=41, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+Using backend: pytorch
+Epoch 00000 | Step 00000 | Loss 29.8478 | Train Acc 0.0210 | Speed (samples/sec) nan | GPU 1193.3 MB
+Epoch 00000 | Step 00020 | Loss 6.6657 | Train Acc 0.0810 | Speed (samples/sec) 27904.0884 | GPU 1200.1 MB
+Epoch 00000 | Step 00040 | Loss 4.2243 | Train Acc 0.1100 | Speed (samples/sec) 28688.5699 | GPU 1203.2 MB
+Epoch 00000 | Step 00060 | Loss 3.4598 | Train Acc 0.2170 | Speed (samples/sec) 29039.1375 | GPU 1203.2 MB
+Epoch 00000 | Step 00080 | Loss 3.1665 | Train Acc 0.2870 | Speed (samples/sec) 29247.3213 | GPU 1203.2 MB
+Epoch 00000 | Step 00100 | Loss 2.8825 | Train Acc 0.3710 | Speed (samples/sec) 29347.8764 | GPU 1203.2 MB
+Epoch 00000 | Step 00120 | Loss 2.4398 | Train Acc 0.4300 | Speed (samples/sec) 29526.0020 | GPU 1203.2 MB
+Epoch 00000 | Step 00140 | Loss 2.3856 | Train Acc 0.4640 | Speed (samples/sec) 29582.0192 | GPU 1203.4 MB
+Epoch Time(s): 6.8584
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/numpy/core/fromnumeric.py:3373: RuntimeWarning: Mean of empty slice.
+  out=out, **kwargs)
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/numpy/core/_methods.py:170: RuntimeWarning: invalid value encountered in double_scalars
+  ret = ret.dtype.type(ret / rcount)
+Epoch 00001 | Step 00000 | Loss 2.1221 | Train Acc 0.5200 | Speed (samples/sec) 29514.6044 | GPU 1203.4 MB
+Epoch 00001 | Step 00020 | Loss 1.9711 | Train Acc 0.5320 | Speed (samples/sec) 29472.6641 | GPU 1203.4 MB
+Epoch 00001 | Step 00040 | Loss 1.9197 | Train Acc 0.5470 | Speed (samples/sec) 29476.0374 | GPU 1203.7 MB
+Epoch 00001 | Step 00060 | Loss 1.8191 | Train Acc 0.5770 | Speed (samples/sec) 29343.4517 | GPU 1203.7 MB
+Epoch 00001 | Step 00080 | Loss 1.8107 | Train Acc 0.5790 | Speed (samples/sec) 29353.1009 | GPU 1203.7 MB
+Epoch 00001 | Step 00100 | Loss 1.6984 | Train Acc 0.6120 | Speed (samples/sec) 29370.7497 | GPU 1203.7 MB
+Epoch 00001 | Step 00120 | Loss 1.5136 | Train Acc 0.6360 | Speed (samples/sec) 29396.9937 | GPU 1203.7 MB
+Epoch 00001 | Step 00140 | Loss 1.4052 | Train Acc 0.6520 | Speed (samples/sec) 29402.7875 | GPU 1203.7 MB
+Epoch Time(s): 6.0647
+block: Block(num_src_nodes=105486, num_dst_nodes=21443, num_edges=213991) h.size: torch.Size([105486, 602])
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                           Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                  aten::dropout         0.23%      23.148us         1.51%     152.492us      76.246us      16.223us         0.16%       2.759ms       1.380ms             2  
+           aten::_fused_dropout         0.88%      88.935us         1.28%     129.344us      64.672us       2.743ms        27.23%       2.743ms       1.372ms             2  
+                   rf-feat-drop        26.13%       2.640ms        27.11%       2.739ms       2.739ms      92.224us         0.92%       2.741ms       2.741ms             1  
+                          rf-FC        24.75%       2.501ms        26.35%       2.663ms       2.663ms      61.504us         0.61%       2.663ms       2.663ms             1  
+                   aten::linear         0.24%      24.613us         1.52%     153.850us     153.850us      59.360us         0.59%       2.601ms       2.601ms             1  
+                   aten::matmul         0.17%      17.117us         0.91%      91.597us      91.597us      14.720us         0.15%       2.542ms       2.542ms             1  
+                       aten::mm         0.70%      70.284us         0.74%      74.480us      74.480us       2.527ms        25.08%       2.527ms       2.527ms             1  
+                  rf-leaky-relu         1.84%     185.625us         8.46%     854.644us     854.644us     144.641us         1.44%     854.688us     854.688us             1  
+                        rf-spmm         5.51%     557.118us         7.44%     752.175us     752.175us     302.911us         3.01%     753.472us     753.472us             1  
+           rf-attn-dot-products         5.00%     505.531us         6.81%     688.323us     688.323us      46.722us         0.46%     685.857us     685.857us             1  
+                     rf-softmax         0.89%      90.333us         6.58%     664.948us     664.948us      28.545us         0.28%     664.577us     664.577us             1  
+                    EdgeSoftmax         3.63%     366.655us         5.67%     572.709us     572.709us     405.345us         4.02%     636.032us     636.032us             1  
+                       rf-sddmm         3.89%     393.228us         6.02%     608.162us     608.162us     347.774us         3.45%     609.503us     609.503us             1  
+                       aten::to         0.25%      25.024us         6.01%     607.177us     607.177us      25.855us         0.26%     606.335us     606.335us             1  
+                    aten::copy_         5.70%     575.448us         5.70%     575.448us     575.448us     580.479us         5.76%     580.479us     580.479us             1  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 10.104ms
+Self CUDA time total: 10.074ms
+
+Epoch 00002 | Step 00000 | Loss 1.4226 | Train Acc 0.6500 | Speed (samples/sec) 29428.1364 | GPU 1203.7 MB
+Epoch 00002 | Step 00020 | Loss 1.3379 | Train Acc 0.6850 | Speed (samples/sec) 29477.6702 | GPU 1203.7 MB
+Epoch 00002 | Step 00040 | Loss 1.2721 | Train Acc 0.7120 | Speed (samples/sec) 29468.2465 | GPU 1203.7 MB
+Epoch 00002 | Step 00060 | Loss 1.3007 | Train Acc 0.6920 | Speed (samples/sec) 29447.9015 | GPU 1203.7 MB
+Epoch 00002 | Step 00080 | Loss 1.2140 | Train Acc 0.7200 | Speed (samples/sec) 29445.6910 | GPU 1203.7 MB
+Epoch 00002 | Step 00100 | Loss 1.1410 | Train Acc 0.7600 | Speed (samples/sec) 29456.8446 | GPU 1203.7 MB
+Epoch 00002 | Step 00120 | Loss 1.1769 | Train Acc 0.7130 | Speed (samples/sec) 29464.3517 | GPU 1203.7 MB
+Epoch 00002 | Step 00140 | Loss 1.0627 | Train Acc 0.7310 | Speed (samples/sec) 29469.2226 | GPU 1203.7 MB
+Epoch Time(s): 6.1152
+Avg epoch time: -0.0
