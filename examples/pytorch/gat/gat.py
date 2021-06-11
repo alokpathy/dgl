@@ -50,17 +50,11 @@ class GAT(nn.Module):
     def forward(self, inputs, epoch=0):
         h = inputs
         for l in range(self.num_layers):
-            if epoch == 3:
+            if epoch == 4:
                 with profiler.profile(use_cuda=True) as prof:
                     h = self.gat_layers[l](self.g, h).flatten(1)
                 print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=15))
             else:
                 h = self.gat_layers[l](self.g, h).flatten(1)
-        if epoch == 3:
-            with profiler.profile(use_cuda=True) as prof:
-                # output projection
-                logits = self.gat_layers[-1](self.g, h).mean(1)
-            print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=15))
-        else:
-            logits = self.gat_layers[-1](self.g, h).mean(1)
+        logits = self.gat_layers[-1](self.g, h).mean(1)
         return logits

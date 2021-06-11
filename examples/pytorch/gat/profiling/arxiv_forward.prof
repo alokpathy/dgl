@@ -1,0 +1,48 @@
+Using backend: pytorch
+Namespace(attn_drop=0.6, dataset='ogbn-arxiv', early_stop=False, epochs=5, fastmode=False, gpu=0, in_drop=0.6, lr=0.005, negative_slope=0.2, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, residual=False, weight_decay=0.0005)
+----Data statistics------'
+      #Edges 1166243
+      #Classes 40
+      #Train samples 90941
+      #Val samples 29799
+      #Test samples 48603
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=128, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=40, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                           Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                     rf-softmax        35.62%       6.129ms        38.10%       6.555ms       6.555ms      28.128us         0.16%       6.556ms       6.556ms             1  
+                        rf-spmm        22.17%       3.814ms        23.85%       4.103ms       4.103ms      93.086us         0.54%       4.104ms       4.104ms             1  
+           rf-attn-dot-products         8.68%       1.493ms         9.43%       1.623ms       1.623ms      32.640us         0.19%       1.624ms       1.624ms             1  
+                   rf-feat-drop         5.32%     915.904us         5.61%     965.096us     965.096us      41.056us         0.24%     965.888us     965.888us             1  
+                       rf-sddmm         4.27%     734.077us         4.93%     848.083us     848.083us      80.705us         0.47%     848.576us     848.576us             1  
+                          rf-FC         4.32%     742.746us         4.76%     819.174us     819.174us      31.968us         0.19%     819.456us     819.456us             1  
+                rf-drop-softmax         2.71%     466.071us         3.02%     519.029us     519.029us      42.464us         0.25%     519.968us     519.968us             1  
+                  rf-leaky-relu         2.35%     404.034us         2.57%     441.371us     441.371us      54.464us         0.32%     441.760us     441.760us             1  
+                    EdgeSoftmax         1.48%     254.910us         2.47%     425.367us     425.367us       5.672ms        32.98%       6.528ms       6.528ms             1  
+                        rf-bias         2.22%     382.613us         2.47%     424.388us     424.388us      35.615us         0.21%     423.998us     423.998us             1  
+                  rf-activation         2.23%     383.471us         2.40%     413.380us     413.380us      21.215us         0.12%     413.760us     413.760us             1  
+                    aten::zeros         0.91%     156.700us         2.16%     371.821us      19.570us     163.679us         0.95%       1.064ms      55.993us            19  
+                          GSpMM         1.47%     252.519us         1.68%     288.829us     288.829us       3.796ms        22.07%       4.011ms       4.011ms             1  
+                    aten::zero_         0.50%      86.451us         0.98%     168.122us       8.849us      65.122us         0.38%     900.195us      47.379us            19  
+                         GSDDMM         0.44%      76.201us         0.65%     112.678us     112.678us     562.624us         3.27%     767.872us     767.872us             1  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 17.205ms
+Self CUDA time total: 17.198ms
+
+
+Test Accuracy 0.0000

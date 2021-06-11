@@ -49,7 +49,7 @@ class GAT(nn.Module):
         h = x
         for l, (layer, block) in enumerate(zip(self.gat_layers, blocks)):
             if l != len(self.gat_layers) - 1:
-                if epoch == 2 and step == 0:
+                if epoch == 4 and step == 0:
                     print(f"block: {block} h.size: {h.size()}")
                     with profiler.profile(use_cuda=True) as prof:
                         h = layer(block, h).flatten(1)

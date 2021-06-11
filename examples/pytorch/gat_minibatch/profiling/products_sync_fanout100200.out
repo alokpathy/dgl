@@ -1,0 +1,112 @@
+Namespace(attn_drop=0.6, batch_size=1000, data_cpu=False, dataset='ogbn-products', dropout=0.5, eval_every=5, fan_out='100,200', gpu=0, in_drop=0.6, inductive=False, log_every=20, lr=0.003, negative_slope=0.2, num_epochs=5, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, num_workers=4, residual=False, sample_gpu=False)
+load ogbn-products
+finish loading ogbn-products
+finish constructing ogbn-products
+Graph(num_nodes=2449029, num_edges=126167053,
+      ndata_schemes={'feat': Scheme(shape=(100,), dtype=torch.float32), 'features': Scheme(shape=(100,), dtype=torch.float32), 'labels': Scheme(shape=(), dtype=torch.int64), 'train_mask': Scheme(shape=(), dtype=torch.bool), 'val_mask': Scheme(shape=(), dtype=torch.bool), 'test_mask': Scheme(shape=(), dtype=torch.bool)}
+      edata_schemes={})
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=100, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=47, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+Using backend: pytorch
+Epoch 00000 | Step 00000 | Loss 82.5795 | Train Acc 0.0130 | Speed (samples/sec) nan | GPU 4171.7 MB
+Epoch 00000 | Step 00020 | Loss 45.9562 | Train Acc 0.0740 | Speed (samples/sec) 2625.6827 | GPU 4235.2 MB
+Epoch 00000 | Step 00040 | Loss 29.6851 | Train Acc 0.0860 | Speed (samples/sec) 2637.7440 | GPU 4272.3 MB
+Epoch 00000 | Step 00060 | Loss 18.3336 | Train Acc 0.1130 | Speed (samples/sec) 2695.4380 | GPU 4272.3 MB
+Epoch 00000 | Step 00080 | Loss 10.2925 | Train Acc 0.1610 | Speed (samples/sec) 2618.0615 | GPU 4272.3 MB
+Epoch 00000 | Step 00100 | Loss 4.9324 | Train Acc 0.1660 | Speed (samples/sec) 2569.5806 | GPU 4272.3 MB
+Epoch 00000 | Step 00120 | Loss 4.3638 | Train Acc 0.1970 | Speed (samples/sec) 2561.9906 | GPU 4272.3 MB
+Epoch 00000 | Step 00140 | Loss 4.1560 | Train Acc 0.1950 | Speed (samples/sec) 2561.5668 | GPU 4272.3 MB
+Epoch 00000 | Step 00160 | Loss 3.8791 | Train Acc 0.2470 | Speed (samples/sec) 2555.7687 | GPU 4272.3 MB
+Epoch 00000 | Step 00180 | Loss 3.2864 | Train Acc 0.2550 | Speed (samples/sec) 2552.2965 | GPU 4272.3 MB
+Epoch Time(s): 117.8929
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/numpy/core/fromnumeric.py:3373: RuntimeWarning: Mean of empty slice.
+  out=out, **kwargs)
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/numpy/core/_methods.py:170: RuntimeWarning: invalid value encountered in double_scalars
+  ret = ret.dtype.type(ret / rcount)
+Epoch 00001 | Step 00000 | Loss 3.4816 | Train Acc 0.2460 | Speed (samples/sec) 2586.0542 | GPU 4272.3 MB
+Epoch 00001 | Step 00020 | Loss 2.8258 | Train Acc 0.2880 | Speed (samples/sec) 2605.4524 | GPU 4272.3 MB
+Epoch 00001 | Step 00040 | Loss 2.7604 | Train Acc 0.2880 | Speed (samples/sec) 2605.5023 | GPU 4272.3 MB
+Epoch 00001 | Step 00060 | Loss 2.7263 | Train Acc 0.2510 | Speed (samples/sec) 2594.7437 | GPU 4272.3 MB
+Epoch 00001 | Step 00080 | Loss 2.6937 | Train Acc 0.3070 | Speed (samples/sec) 2600.2184 | GPU 4272.3 MB
+Epoch 00001 | Step 00100 | Loss 2.6905 | Train Acc 0.3100 | Speed (samples/sec) 2592.3666 | GPU 4272.3 MB
+Epoch 00001 | Step 00120 | Loss 2.5577 | Train Acc 0.3490 | Speed (samples/sec) 2583.1493 | GPU 4272.3 MB
+Epoch 00001 | Step 00140 | Loss 2.6163 | Train Acc 0.3560 | Speed (samples/sec) 2582.5120 | GPU 4272.3 MB
+Epoch 00001 | Step 00160 | Loss 2.5708 | Train Acc 0.2960 | Speed (samples/sec) 2586.3457 | GPU 4272.3 MB
+Epoch 00001 | Step 00180 | Loss 2.4240 | Train Acc 0.3550 | Speed (samples/sec) 2593.4594 | GPU 4272.3 MB
+Epoch Time(s): 115.4524
+Epoch 00002 | Step 00000 | Loss 2.3972 | Train Acc 0.3580 | Speed (samples/sec) 2612.5413 | GPU 4272.3 MB
+Epoch 00002 | Step 00020 | Loss 2.3747 | Train Acc 0.3770 | Speed (samples/sec) 2627.4766 | GPU 4272.3 MB
+Epoch 00002 | Step 00040 | Loss 2.3268 | Train Acc 0.3800 | Speed (samples/sec) 2626.6789 | GPU 4272.3 MB
+Epoch 00002 | Step 00060 | Loss 2.2846 | Train Acc 0.3780 | Speed (samples/sec) 2623.1530 | GPU 4272.3 MB
+Epoch 00002 | Step 00080 | Loss 2.2435 | Train Acc 0.3900 | Speed (samples/sec) 2622.4953 | GPU 4272.3 MB
+Epoch 00002 | Step 00100 | Loss 2.2139 | Train Acc 0.4160 | Speed (samples/sec) 2624.6932 | GPU 4272.3 MB
+Epoch 00002 | Step 00120 | Loss 2.1027 | Train Acc 0.4370 | Speed (samples/sec) 2620.9822 | GPU 4272.3 MB
+Epoch 00002 | Step 00140 | Loss 2.1197 | Train Acc 0.4440 | Speed (samples/sec) 2618.5289 | GPU 4272.3 MB
+Epoch 00002 | Step 00160 | Loss 2.0795 | Train Acc 0.4230 | Speed (samples/sec) 2612.2010 | GPU 4272.3 MB
+Epoch 00002 | Step 00180 | Loss 2.1276 | Train Acc 0.4140 | Speed (samples/sec) 2606.9224 | GPU 4272.3 MB
+Epoch Time(s): 115.0798
+Epoch 00003 | Step 00000 | Loss 2.0309 | Train Acc 0.4630 | Speed (samples/sec) 2620.0325 | GPU 4272.3 MB
+Epoch 00003 | Step 00020 | Loss 2.0676 | Train Acc 0.4610 | Speed (samples/sec) 2617.4190 | GPU 4272.3 MB
+Epoch 00003 | Step 00040 | Loss 1.9307 | Train Acc 0.4830 | Speed (samples/sec) 2614.7410 | GPU 4272.3 MB
+Epoch 00003 | Step 00060 | Loss 1.9695 | Train Acc 0.4720 | Speed (samples/sec) 2610.4320 | GPU 4272.3 MB
+Epoch 00003 | Step 00080 | Loss 2.0232 | Train Acc 0.4610 | Speed (samples/sec) 2609.7041 | GPU 4272.3 MB
+Epoch 00003 | Step 00100 | Loss 1.9892 | Train Acc 0.4870 | Speed (samples/sec) 2609.6343 | GPU 4272.3 MB
+Epoch 00003 | Step 00120 | Loss 1.8986 | Train Acc 0.5150 | Speed (samples/sec) 2605.6879 | GPU 4272.3 MB
+Epoch 00003 | Step 00140 | Loss 1.7560 | Train Acc 0.5180 | Speed (samples/sec) 2605.9960 | GPU 4272.3 MB
+Epoch 00003 | Step 00160 | Loss 1.8362 | Train Acc 0.5200 | Speed (samples/sec) 2607.8354 | GPU 4272.3 MB
+Epoch 00003 | Step 00180 | Loss 1.7569 | Train Acc 0.5630 | Speed (samples/sec) 2615.3739 | GPU 4272.3 MB
+Epoch Time(s): 113.9634
+block: Block(num_src_nodes=1199506, num_dst_nodes=111438, num_edges=8399901) h.size: torch.Size([1199506, 100])
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                           Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                  rf-leaky-relu         2.90%       2.377ms        23.79%      19.503ms      19.503ms     194.238us         0.24%      19.503ms      19.503ms             1  
+                     rf-softmax        22.42%      18.375ms        23.25%      19.059ms      19.059ms      45.055us         0.05%      19.061ms      19.061ms             1  
+                    EdgeSoftmax         0.53%     435.491us         0.83%     681.347us     681.347us      14.348ms        17.51%      19.016ms      19.016ms             1  
+                       aten::to         0.03%      24.372us        20.81%      17.054ms      17.054ms      33.055us         0.04%      17.053ms      17.053ms             1  
+                    aten::copy_        20.76%      17.020ms        20.76%      17.020ms      17.020ms      17.020ms        20.77%      17.020ms      17.020ms             1  
+           rf-attn-dot-products        12.52%      10.263ms        12.76%      10.458ms      10.458ms      57.158us         0.07%      10.459ms      10.459ms             1  
+                        rf-spmm        10.74%       8.804ms        11.07%       9.073ms       9.073ms     368.609us         0.45%       9.075ms       9.075ms             1  
+                          GSpMM         0.27%     223.867us         0.33%     268.770us     268.770us       8.544ms        10.43%       8.706ms       8.706ms             1  
+                  aten::dropout         0.04%      30.337us         0.21%     169.021us      84.510us      23.557us         0.03%       7.926ms       3.963ms             2  
+           aten::_fused_dropout         0.12%      98.493us         0.17%     138.684us      69.342us       7.902ms         9.64%       7.902ms       3.951ms             2  
+                      aten::sum         0.08%      65.998us         0.09%      74.174us      37.087us       7.596ms         9.27%       7.596ms       3.798ms             2  
+                          rf-FC         9.04%       7.408ms         9.25%       7.578ms       7.578ms      94.977us         0.12%       7.580ms       7.580ms             1  
+                   aten::linear         0.03%      26.625us         0.20%     160.011us     160.011us      61.055us         0.07%       7.485ms       7.485ms             1  
+                   aten::matmul         0.02%      16.681us         0.12%      96.862us      96.862us      13.824us         0.02%       7.424ms       7.424ms             1  
+                       aten::mm         0.09%      73.338us         0.10%      80.181us      80.181us       7.410ms         9.04%       7.410ms       7.410ms             1  
+-------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 81.970ms
+Self CUDA time total: 81.953ms
+
+Epoch 00004 | Step 00000 | Loss 1.7551 | Train Acc 0.5280 | Speed (samples/sec) 2627.5667 | GPU 4272.3 MB
+Epoch 00004 | Step 00020 | Loss 1.7501 | Train Acc 0.5220 | Speed (samples/sec) 2628.6685 | GPU 4272.3 MB
+Epoch 00004 | Step 00040 | Loss 1.6531 | Train Acc 0.5620 | Speed (samples/sec) 2624.7198 | GPU 4272.3 MB
+Epoch 00004 | Step 00060 | Loss 1.7054 | Train Acc 0.5760 | Speed (samples/sec) 2624.7819 | GPU 4272.3 MB
+Epoch 00004 | Step 00080 | Loss 1.6373 | Train Acc 0.5780 | Speed (samples/sec) 2631.2495 | GPU 4272.3 MB
+Epoch 00004 | Step 00100 | Loss 1.6330 | Train Acc 0.5750 | Speed (samples/sec) 2630.8576 | GPU 4272.3 MB
+Epoch 00004 | Step 00120 | Loss 1.6344 | Train Acc 0.5720 | Speed (samples/sec) 2634.1538 | GPU 4272.3 MB
+Epoch 00004 | Step 00140 | Loss 1.5325 | Train Acc 0.5950 | Speed (samples/sec) 2635.7194 | GPU 4272.3 MB
+Epoch 00004 | Step 00160 | Loss 1.6513 | Train Acc 0.5810 | Speed (samples/sec) 2634.9523 | GPU 4272.3 MB
+Epoch 00004 | Step 00180 | Loss 1.5333 | Train Acc 0.6120 | Speed (samples/sec) 2634.9231 | GPU 4272.3 MB
+Epoch Time(s): 112.8718
+Traceback (most recent call last):
+  File "train_sampling.py", line 215, in <module>
+    run(args, device, data)
+  File "train_sampling.py", line 137, in run
+    print('Avg epoch time: {}'.format(avg / (epoch - 4)))
+ZeroDivisionError: division by zero
