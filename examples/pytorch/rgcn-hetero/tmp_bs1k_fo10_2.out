@@ -1,0 +1,159 @@
+Namespace(batch_size=1000, data_cpu=False, dataset='ogbn-mag', dropout=0, fanout=10, gpu=-1, l2norm=0, lr=0.01, model_path=None, n_bases=-1, n_epochs=2, n_hidden=16, n_layers=2, use_self_loop=False, validation=False)
+Number of relations: 8
+Number of class: 349
+Number of train: 629571
+Number of valid: 64879
+Number of test: 41939
+start training...
+rel_id: 0 graph: Block(num_src_nodes=31006, num_dst_nodes=9227, num_edges=43702) inputs; torch.Size([31006, 16])
+spmm_time: 3.261646032333374
+rel_id: 1 graph: Block(num_src_nodes=9669, num_dst_nodes=9227, num_edges=89119) inputs; torch.Size([9669, 16])
+spmm_time: 0.0019567012786865234
+rel_id: 2 graph: Block(num_src_nodes=1275, num_dst_nodes=4337, num_edges=6270) inputs; torch.Size([1275, 16])
+spmm_time: 0.0004763603210449219
+rel_id: 3 graph: Block(num_src_nodes=114554, num_dst_nodes=9227, num_edges=54247) inputs; torch.Size([114554, 16])
+spmm_time: 0.0015604496002197266
+rel_id: 4 graph: Block(num_src_nodes=114554, num_dst_nodes=3423, num_edges=33458) inputs; torch.Size([114554, 16])
+spmm_time: 0.0007712841033935547
+rel_id: 5 graph: Block(num_src_nodes=114554, num_dst_nodes=9227, num_edges=55483) inputs; torch.Size([114554, 16])
+spmm_time: 0.0015420913696289062
+rel_id: 6 graph: Block(num_src_nodes=114554, num_dst_nodes=4337, num_edges=28681) inputs; torch.Size([114554, 16])
+spmm_time: 0.0007500648498535156
+rel_id: 0 graph: Block(num_src_nodes=4337, num_dst_nodes=1000, num_edges=4378) inputs; torch.Size([4337, 16])
+spmm_time: 0.0004892349243164062
+rel_id: 1 graph: Block(num_src_nodes=3423, num_dst_nodes=1000, num_edges=9716) inputs; torch.Size([3423, 16])
+spmm_time: 0.00048613548278808594
+rel_id: 2 graph: Block(num_src_nodes=9227, num_dst_nodes=1000, num_edges=4263) inputs; torch.Size([9227, 16])
+spmm_time: 0.0003695487976074219
+rel_id: 3 graph: Block(num_src_nodes=9227, num_dst_nodes=1000, num_edges=4104) inputs; torch.Size([9227, 16])
+spmm_time: 0.0003731250762939453
+Epoch 00000 | Batch 000 | Train Acc: 0.0040 | Train Loss: 5.8550 | Time: 3.6195
+rel_id: 0 graph: Block(num_src_nodes=31579, num_dst_nodes=9337, num_edges=43904) inputs; torch.Size([31579, 16])
+spmm_time: 0.0010142326354980469
+rel_id: 1 graph: Block(num_src_nodes=9694, num_dst_nodes=9337, num_edges=90007) inputs; torch.Size([9694, 16])
+spmm_time: 0.0013284683227539062
+rel_id: 2 graph: Block(num_src_nodes=1286, num_dst_nodes=4327, num_edges=6292) inputs; torch.Size([1286, 16])
+spmm_time: 0.00045871734619140625
+rel_id: 3 graph: Block(num_src_nodes=114535, num_dst_nodes=9337, num_edges=54929) inputs; torch.Size([114535, 16])
+spmm_time: 0.0010919570922851562
+rel_id: 4 graph: Block(num_src_nodes=114535, num_dst_nodes=3331, num_edges=32578) inputs; torch.Size([114535, 16])
+spmm_time: 0.0007328987121582031
+rel_id: 5 graph: Block(num_src_nodes=114535, num_dst_nodes=9337, num_edges=56474) inputs; torch.Size([114535, 16])
+spmm_time: 0.0011112689971923828
+rel_id: 6 graph: Block(num_src_nodes=114535, num_dst_nodes=4327, num_edges=27962) inputs; torch.Size([114535, 16])
+spmm_time: 0.0007805824279785156
+rel_id: 0 graph: Block(num_src_nodes=4327, num_dst_nodes=1000, num_edges=4368) inputs; torch.Size([4327, 16])
+spmm_time: 0.0004012584686279297
+rel_id: 1 graph: Block(num_src_nodes=3331, num_dst_nodes=1000, num_edges=9678) inputs; torch.Size([3331, 16])
+spmm_time: 0.00044345855712890625
+rel_id: 2 graph: Block(num_src_nodes=9337, num_dst_nodes=1000, num_edges=4402) inputs; torch.Size([9337, 16])
+spmm_time: 0.00038170814514160156
+rel_id: 3 graph: Block(num_src_nodes=9337, num_dst_nodes=1000, num_edges=4093) inputs; torch.Size([9337, 16])
+spmm_time: 0.00036835670471191406
+Epoch 00000 | Batch 001 | Train Acc: 0.0540 | Train Loss: 5.8431 | Time: 0.2977
+rel_id: 0 graph: Block(num_src_nodes=33041, num_dst_nodes=9614, num_edges=46189) inputs; torch.Size([33041, 16])
+spmm_time: 0.001064300537109375
+rel_id: 1 graph: Block(num_src_nodes=9528, num_dst_nodes=9614, num_edges=92633) inputs; torch.Size([9528, 16])
+spmm_time: 0.0013515949249267578
+rel_id: 2 graph: Block(num_src_nodes=1248, num_dst_nodes=4422, num_edges=6387) inputs; torch.Size([1248, 16])
+spmm_time: 0.00046944618225097656
+rel_id: 3 graph: Block(num_src_nodes=117668, num_dst_nodes=9614, num_edges=58039) inputs; torch.Size([117668, 16])
+spmm_time: 0.001192331314086914
+rel_id: 4 graph: Block(num_src_nodes=117668, num_dst_nodes=3314, num_edges=32476) inputs; torch.Size([117668, 16])
+spmm_time: 0.0008287429809570312
+rel_id: 5 graph: Block(num_src_nodes=117668, num_dst_nodes=9614, num_edges=59220) inputs; torch.Size([117668, 16])
+spmm_time: 0.0011718273162841797
+rel_id: 6 graph: Block(num_src_nodes=117668, num_dst_nodes=4422, num_edges=29360) inputs; torch.Size([117668, 16])
+spmm_time: 0.0007719993591308594
+rel_id: 0 graph: Block(num_src_nodes=4422, num_dst_nodes=1000, num_edges=4482) inputs; torch.Size([4422, 16])
+spmm_time: 0.00039958953857421875
+rel_id: 1 graph: Block(num_src_nodes=3314, num_dst_nodes=1000, num_edges=9623) inputs; torch.Size([3314, 16])
+spmm_time: 0.00045561790466308594
+rel_id: 2 graph: Block(num_src_nodes=9614, num_dst_nodes=1000, num_edges=4518) inputs; torch.Size([9614, 16])
+spmm_time: 0.0003952980041503906
+rel_id: 3 graph: Block(num_src_nodes=9614, num_dst_nodes=1000, num_edges=4276) inputs; torch.Size([9614, 16])
+spmm_time: 0.0003952980041503906
+Epoch 00000 | Batch 002 | Train Acc: 0.0690 | Train Loss: 5.8258 | Time: 0.3012
+rel_id: 0 graph: Block(num_src_nodes=32246, num_dst_nodes=9620, num_edges=45403) inputs; torch.Size([32246, 16])
+spmm_time: 0.0011036396026611328
+rel_id: 1 graph: Block(num_src_nodes=9774, num_dst_nodes=9620, num_edges=92642) inputs; torch.Size([9774, 16])
+spmm_time: 0.0013751983642578125
+rel_id: 2 graph: Block(num_src_nodes=1282, num_dst_nodes=4358, num_edges=6331) inputs; torch.Size([1282, 16])
+spmm_time: 0.0004787445068359375
+rel_id: 3 graph: Block(num_src_nodes=116989, num_dst_nodes=9620, num_edges=57339) inputs; torch.Size([116989, 16])
+spmm_time: 0.0012068748474121094
+rel_id: 4 graph: Block(num_src_nodes=116989, num_dst_nodes=3335, num_edges=32588) inputs; torch.Size([116989, 16])
+spmm_time: 0.000732421875
+rel_id: 5 graph: Block(num_src_nodes=116989, num_dst_nodes=9620, num_edges=57971) inputs; torch.Size([116989, 16])
+spmm_time: 0.0011527538299560547
+rel_id: 6 graph: Block(num_src_nodes=116989, num_dst_nodes=4358, num_edges=28769) inputs; torch.Size([116989, 16])
+spmm_time: 0.0007612705230712891
+rel_id: 0 graph: Block(num_src_nodes=4358, num_dst_nodes=1000, num_edges=4414) inputs; torch.Size([4358, 16])
+spmm_time: 0.00040340423583984375
+rel_id: 1 graph: Block(num_src_nodes=3335, num_dst_nodes=1000, num_edges=9599) inputs; torch.Size([3335, 16])
+spmm_time: 0.00044536590576171875
+rel_id: 2 graph: Block(num_src_nodes=9620, num_dst_nodes=1000, num_edges=4419) inputs; torch.Size([9620, 16])
+spmm_time: 0.00038361549377441406
+rel_id: 3 graph: Block(num_src_nodes=9620, num_dst_nodes=1000, num_edges=4381) inputs; torch.Size([9620, 16])
+spmm_time: 0.0003819465637207031
+Epoch 00000 | Batch 003 | Train Acc: 0.0580 | Train Loss: 5.8003 | Time: 0.2957
+rel_id: 0 graph: Block(num_src_nodes=32933, num_dst_nodes=9821, num_edges=47078) inputs; torch.Size([32933, 16])
+spmm_time: 0.0010886192321777344
+rel_id: 1 graph: Block(num_src_nodes=9686, num_dst_nodes=9821, num_edges=94569) inputs; torch.Size([9686, 16])
+spmm_time: 0.0013856887817382812
+rel_id: 2 graph: Block(num_src_nodes=1295, num_dst_nodes=4345, num_edges=6278) inputs; torch.Size([1295, 16])
+spmm_time: 0.00047135353088378906
+rel_id: 3 graph: Block(num_src_nodes=119279, num_dst_nodes=9821, num_edges=59765) inputs; torch.Size([119279, 16])
+spmm_time: 0.0011534690856933594
+rel_id: 4 graph: Block(num_src_nodes=119279, num_dst_nodes=3313, num_edges=32465) inputs; torch.Size([119279, 16])
+spmm_time: 0.0007233619689941406
+rel_id: 5 graph: Block(num_src_nodes=119279, num_dst_nodes=9821, num_edges=61439) inputs; torch.Size([119279, 16])
+spmm_time: 0.0012116432189941406
+rel_id: 6 graph: Block(num_src_nodes=119279, num_dst_nodes=4345, num_edges=29278) inputs; torch.Size([119279, 16])
+spmm_time: 0.0007989406585693359
+rel_id: 0 graph: Block(num_src_nodes=4345, num_dst_nodes=1000, num_edges=4402) inputs; torch.Size([4345, 16])
+spmm_time: 0.0004088878631591797Using backend: pytorch
+
+rel_id: 1 graph: Block(num_src_nodes=3313, num_dst_nodes=1000, num_edges=9659) inputs; torch.Size([3313, 16])
+spmm_time: 0.00045180320739746094
+rel_id: 2 graph: Block(num_src_nodes=9821, num_dst_nodes=1000, num_edges=4682) inputs; torch.Size([9821, 16])
+spmm_time: 0.00039315223693847656
+rel_id: 3 graph: Block(num_src_nodes=9821, num_dst_nodes=1000, num_edges=4314) inputs; torch.Size([9821, 16])
+spmm_time: 0.0003867149353027344
+Epoch 00000 | Batch 004 | Train Acc: 0.0620 | Train Loss: 5.7653 | Time: 0.2994
+rel_id: 0 graph: Block(num_src_nodes=32373, num_dst_nodes=9503, num_edges=45161) inputs; torch.Size([32373, 16])
+spmm_time: 0.0011610984802246094
+rel_id: 1 graph: Block(num_src_nodes=9695, num_dst_nodes=9503, num_edges=91846) inputs; torch.Size([9695, 16])
+spmm_time: 0.0014796257019042969
+rel_id: 2 graph: Block(num_src_nodes=1304, num_dst_nodes=4463, num_edges=6410) inputs; torch.Size([1304, 16])
+spmm_time: 0.0006148815155029297
+rel_id: 3 graph: Block(num_src_nodes=115866, num_dst_nodes=9503, num_edges=56609) inputs; torch.Size([115866, 16])
+spmm_time: 0.0012967586517333984
+rel_id: 4 graph: Block(num_src_nodes=115866, num_dst_nodes=3333, num_edges=32613) inputs; torch.Size([115866, 16])
+spmm_time: 0.0008616447448730469
+rel_id: 5 graph: Block(num_src_nodes=115866, num_dst_nodes=9503, num_edges=57323) inputs; torch.Size([115866, 16])
+spmm_time: 0.00127410888671875
+rel_id: 6 graph: Block(num_src_nodes=115866, num_dst_nodes=4463, num_edges=29193) inputs; torch.Size([115866, 16])
+spmm_time: 0.0008597373962402344
+-----------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-----------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                  GSpMM        40.04%       4.771ms        43.32%       5.161ms     737.303us       4.829ms        40.91%       5.168ms     738.304us             7  
+          rf-spmm-type1         2.36%     281.535us        11.98%       1.427ms       1.427ms     284.319us         2.41%       1.429ms       1.429ms             1  
+          rf-spmm-type3         2.28%     272.109us        10.31%       1.229ms       1.229ms     274.625us         2.33%       1.229ms       1.229ms             1  
+          rf-spmm-type5         2.18%     260.005us        10.27%       1.224ms       1.224ms     261.728us         2.22%       1.225ms       1.225ms             1  
+          rf-spmm-type0         2.66%     316.531us         9.07%       1.080ms       1.080ms     319.072us         2.70%       1.081ms       1.081ms             1  
+              aten::mul         6.30%     750.514us         7.43%     884.878us      63.206us     775.616us         6.57%     880.735us      62.910us            14  
+          rf-spmm-type4         2.31%     274.922us         6.80%     810.261us     810.261us     278.017us         2.36%     811.231us     811.231us             1  
+          rf-spmm-type6         2.31%     274.974us         6.78%     807.435us     807.435us     276.831us         2.35%     808.960us     808.960us             1  
+     rf-normalize-type0         2.15%     256.172us         5.02%     598.441us     598.441us     260.479us         2.21%     598.080us     598.080us             1  
+            aten::zeros         2.06%     245.748us         5.16%     614.621us      29.268us     273.026us         2.31%     575.231us      27.392us            21  
+          rf-spmm-type2         2.37%     282.454us         4.73%     563.775us     563.775us     285.344us         2.42%     563.840us     563.840us             1  
+     rf-normalize-type1         1.72%     204.941us         4.21%     501.642us     501.642us     212.704us         1.80%     501.728us     501.728us             1  
+     rf-normalize-type3         1.54%     183.960us         4.19%     499.661us     499.661us     191.936us         1.63%     500.000us     500.000us             1  
+     rf-normalize-type5         1.52%     181.635us         4.02%     478.676us     478.676us     187.872us         1.59%     478.912us     478.912us             1  
+            aten::stack         0.59%      70.555us         3.72%     443.780us     147.927us      85.375us         0.72%     442.399us     147.466us             3  
+-----------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 11.915ms
+Self CUDA time total: 11.805ms
+

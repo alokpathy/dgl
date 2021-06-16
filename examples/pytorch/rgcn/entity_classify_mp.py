@@ -378,28 +378,28 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
             return eval_loss, eval_acc
 
         vstart = time.time()
-        if (queue is not None) or (proc_id == 0):
-            val_logits, val_seeds = evaluate(model, embed_layer, val_loader, node_feats)
-            if queue is not None:
-                queue.put((val_logits, val_seeds))
+        # if (queue is not None) or (proc_id == 0):
+        #     val_logits, val_seeds = evaluate(model, embed_layer, val_loader, node_feats)
+        #     if queue is not None:
+        #         queue.put((val_logits, val_seeds))
 
-            # gather evaluation result from multiple processes
-            if proc_id == 0:
-                val_loss, val_acc = collect_eval() if queue is not None else \
-                    (F.cross_entropy(val_logits, labels[val_seeds].cpu()).item(), \
-                    th.sum(val_logits.argmax(dim=1) == labels[val_seeds].cpu()).item() / len(val_seeds))
+        #     # gather evaluation result from multiple processes
+        #     if proc_id == 0:
+        #         val_loss, val_acc = collect_eval() if queue is not None else \
+        #             (F.cross_entropy(val_logits, labels[val_seeds].cpu()).item(), \
+        #             th.sum(val_logits.argmax(dim=1) == labels[val_seeds].cpu()).item() / len(val_seeds))
 
-                do_test = val_acc > last_val_acc
-                last_val_acc = val_acc
-                print("Validation Accuracy: {:.4f} | Validation loss: {:.4f}".
-                        format(val_acc, val_loss))
-        if n_gpus > 1:
-            th.distributed.barrier()
-            if proc_id == 0:
-                for i in range(1, n_gpus):
-                    queue.put(do_test)
-            else:
-                do_test = queue.get()
+        #         do_test = val_acc > last_val_acc
+        #         last_val_acc = val_acc
+        #         print("Validation Accuracy: {:.4f} | Validation loss: {:.4f}".
+        #                 format(val_acc, val_loss))
+        # if n_gpus > 1:
+        #     th.distributed.barrier()
+        #     if proc_id == 0:
+        #         for i in range(1, n_gpus):
+        #             queue.put(do_test)
+        #     else:
+        #         do_test = queue.get()
 
         vend = time.time()
         validation_time += (vend - vstart)

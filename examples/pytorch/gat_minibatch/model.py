@@ -8,6 +8,7 @@ import sklearn.linear_model as lm
 import sklearn.metrics as skm
 import tqdm
 
+import torch
 import torch.autograd.profiler as profiler
 
 class GAT(nn.Module):

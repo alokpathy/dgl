@@ -11,6 +11,9 @@ from ....transform import reverse
 from ....convert import block_to_graph
 from ....heterograph import DGLBlock
 
+import torch.autograd.profiler as profiler
+import time
+
 class EdgeWeightNorm(nn.Module):
     r"""
 
@@ -326,7 +329,7 @@ class GraphConv(nn.Module):
         """
         self._allow_zero_in_degree = set_value
 
-    def forward(self, graph, feat, weight=None, edge_weight=None):
+    def forward(self, graph, feat, rel_id, weight=None, edge_weight=None):
         r"""
 
         Description
@@ -413,27 +416,39 @@ class GraphConv(nn.Module):
             if self._in_feats > self._out_feats:
                 # mult W first to reduce the feature size for aggregation.
                 if weight is not None:
-                    feat_src = th.matmul(feat_src, weight)
+                    with profiler.record_function("rf-FC-type{}".format(rel_id)):
+                        feat_src = th.matmul(feat_src, weight)
+                        th.cuda.synchronize()
                 graph.srcdata['h'] = feat_src
-                graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                with profiler.record_function("rf-spmm-type{}".format(rel_id)):
+                    graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                    th.cuda.synchronize()
                 rst = graph.dstdata['h']
             else:
                 # aggregate first then mult W
                 graph.srcdata['h'] = feat_src
-                graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                spmm_start = time.time()
+                with profiler.record_function("rf-spmm-type{}".format(rel_id)):
+                    graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                    th.cuda.synchronize()
+                print(f"spmm_time: {time.time() - spmm_start}")
                 rst = graph.dstdata['h']
                 if weight is not None:
-                    rst = th.matmul(rst, weight)
+                    with profiler.record_function("rf-FC-type{}".format(rel_id)):
+                        rst = th.matmul(rst, weight)
+                        th.cuda.synchronize()
 
-            if self._norm != 'none':
-                degs = graph.in_degrees().float().clamp(min=1)
-                if self._norm == 'both':
-                    norm = th.pow(degs, -0.5)
-                else:
-                    norm = 1.0 / degs
-                shp = norm.shape + (1,) * (feat_dst.dim() - 1)
-                norm = th.reshape(norm, shp)
-                rst = rst * norm
+            with profiler.record_function("rf-normalize-type{}".format(rel_id)):
+                if self._norm != 'none':
+                    degs = graph.in_degrees().float().clamp(min=1)
+                    if self._norm == 'both':
+                        norm = th.pow(degs, -0.5)
+                    else:
+                        norm = 1.0 / degs
+                    shp = norm.shape + (1,) * (feat_dst.dim() - 1)
+                    norm = th.reshape(norm, shp)
+                    rst = rst * norm
+                th.cuda.synchronize()
 
             if self.bias is not None:
                 rst = rst + self.bias

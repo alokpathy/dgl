@@ -1,0 +1,267 @@
+Namespace(batch_size=1000, data_cpu=False, dataset='ogbn-mag', dropout=0, fanout=10, gpu=-1, l2norm=0, lr=0.01, model_path=None, n_bases=-1, n_epochs=2, n_hidden=16, n_layers=2, use_self_loop=False, validation=False)
+Number of relations: 8
+Number of class: 349
+Number of train: 629571
+Number of valid: 64879
+Number of test: 41939
+start training...
+rel_id: 0 graph: Block(num_src_nodes=32499, num_dst_nodes=9647, num_edges=45839) inputs; torch.Size([32499, 16])
+rel_id: 1 graph: Block(num_src_nodes=9837, num_dst_nodes=9647, num_edges=93041) inputs; torch.Size([9837, 16])
+rel_id: 2 graph: Block(num_src_nodes=1287, num_dst_nodes=4402, num_edges=6364) inputs; torch.Size([1287, 16])
+rel_id: 3 graph: Block(num_src_nodes=117597, num_dst_nodes=9647, num_edges=57438) inputs; torch.Size([117597, 16])
+rel_id: 4 graph: Block(num_src_nodes=117597, num_dst_nodes=3401, num_edges=33278) inputs; torch.Size([117597, 16])
+rel_id: 5 graph: Block(num_src_nodes=117597, num_dst_nodes=9647, num_edges=59245) inputs; torch.Size([117597, 16])
+rel_id: 6 graph: Block(num_src_nodes=117597, num_dst_nodes=4402, num_edges=28826) inputs; torch.Size([117597, 16])
+rel_id: 0 graph: Block(num_src_nodes=4402, num_dst_nodes=1000, num_edges=4444) inputs; torch.Size([4402, 16])
+weight2?: tensor([[ 0.0090,  0.0269,  0.0048,  ...,  0.0010,  0.0071, -0.0265],
+        [ 0.0323,  0.0363,  0.0004,  ...,  0.0101, -0.0255, -0.0169],
+        [-0.0161, -0.0158,  0.0127,  ...,  0.0259,  0.0160, -0.0058],
+        ...,
+        [ 0.0333, -0.0318, -0.0301,  ..., -0.0066,  0.0116, -0.0195],
+        [-0.0279,  0.0009, -0.0357,  ..., -0.0185,  0.0159,  0.0107],
+        [-0.0299,  0.0185,  0.0109,  ...,  0.0207, -0.0002,  0.0063]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 1 graph: Block(num_src_nodes=3401, num_dst_nodes=1000, num_edges=9693) inputs; torch.Size([3401, 16])
+weight2?: tensor([[-0.0279,  0.0065, -0.0168,  ...,  0.0057, -0.0378,  0.0140],
+        [-0.0062, -0.0226,  0.0002,  ...,  0.0209,  0.0090,  0.0287],
+        [-0.0128, -0.0296,  0.0350,  ..., -0.0347, -0.0365,  0.0174],
+        ...,
+        [ 0.0195,  0.0226, -0.0114,  ..., -0.0359, -0.0183,  0.0042],
+        [-0.0223, -0.0243,  0.0183,  ...,  0.0087, -0.0219,  0.0146],
+        [-0.0202,  0.0160, -0.0353,  ..., -0.0290,  0.0277, -0.0135]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 2 graph: Block(num_src_nodes=9647, num_dst_nodes=1000, num_edges=4581) inputs; torch.Size([9647, 16])
+weight2?: tensor([[ 0.0130,  0.0050,  0.0047,  ...,  0.0150,  0.0069, -0.0185],
+        [ 0.0336, -0.0106,  0.0151,  ..., -0.0365, -0.0249, -0.0181],
+        [-0.0267, -0.0124,  0.0277,  ..., -0.0354,  0.0356, -0.0075],
+        ...,
+        [ 0.0343, -0.0269, -0.0187,  ...,  0.0371, -0.0103, -0.0227],
+        [-0.0321,  0.0003,  0.0052,  ...,  0.0089, -0.0345, -0.0136],
+        [-0.0309,  0.0199,  0.0180,  ..., -0.0313, -0.0275, -0.0147]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 3 graph: Block(num_src_nodes=9647, num_dst_nodes=1000, num_edges=4233) inputs; torch.Size([9647, 16])
+weight2?: tensor([[-0.0190, -0.0169,  0.0236,  ..., -0.0021,  0.0196, -0.0247],
+        [ 0.0250,  0.0100,  0.0092,  ...,  0.0220,  0.0047,  0.0098],
+        [ 0.0361,  0.0110, -0.0096,  ..., -0.0324,  0.0053, -0.0185],
+        ...,
+        [-0.0242,  0.0290,  0.0061,  ...,  0.0167, -0.0280, -0.0193],
+        [ 0.0225, -0.0274, -0.0164,  ...,  0.0195,  0.0188, -0.0083],
+        [-0.0024, -0.0262,  0.0220,  ...,  0.0062,  0.0036,  0.0295]],
+       grad_fn=<SqueezeBackward1>)
+Epoch 00000 | Batch 000 | Train Acc: 0.0010 | Train Loss: 5.8550 | Time: 3.6354
+rel_id: 0 graph: Block(num_src_nodes=31721, num_dst_nodes=9475, num_edges=43650) inputs; torch.Size([31721, 16])
+rel_id: 1 graph: Block(num_src_nodes=9799, num_dst_nodes=9475, num_edges=91235) inputs; torch.Size([9799, 16])
+rel_id: 2 graph: Block(num_src_nodes=1296, num_dst_nodes=4263, num_edges=6251) inputs; torch.Size([1296, 16])
+rel_id: 3 graph: Block(num_src_nodes=115843, num_dst_nodes=9475, num_edges=56538) inputs; torch.Size([115843, 16])
+rel_id: 4 graph: Block(num_src_nodes=115843, num_dst_nodes=3461, num_edges=33679) inputs; torch.Size([115843, 16])
+rel_id: 5 graph: Block(num_src_nodes=115843, num_dst_nodes=9475, num_edges=57456) inputs; torch.Size([115843, 16])
+rel_id: 6 graph: Block(num_src_nodes=115843, num_dst_nodes=4263, num_edges=27468) inputs; torch.Size([115843, 16])
+rel_id: 0 graph: Block(num_src_nodes=4263, num_dst_nodes=1000, num_edges=4295) inputs; torch.Size([4263, 16])
+weight2?: tensor([[ 1.9015e-02,  3.6946e-02, -5.1962e-03,  ..., -9.0184e-03,
+          1.7055e-02, -3.6492e-02],
+        [ 4.2319e-02,  4.6313e-02, -9.5571e-03,  ...,  9.3010e-05,
+         -3.5482e-02, -2.6877e-02],
+        [-6.1213e-03, -5.8149e-03,  2.6661e-03,  ...,  1.5908e-02,
+          6.0552e-03, -1.5793e-02],
+        ...,
+        [ 2.3294e-02, -2.1806e-02, -4.0106e-02,  ..., -1.6638e-02,
+          1.6016e-03, -2.9487e-02],
+        [-3.7601e-02,  1.0864e-02, -4.5733e-02,  ..., -2.8485e-02,
+          2.5858e-02,  7.3211e-04],
+        [-1.9974e-02,  2.8477e-02,  9.2130e-04,  ...,  1.0700e-02,
+         -1.0178e-02, -3.7072e-03]], grad_fn=<SqueezeBackward1>)
+rel_id: 1 graph: Block(num_src_nodes=3461, num_dst_nodes=1000, num_edges=9662) inputs; torch.Size([3461, 16])
+weight2?: tensor([[-0.0179,  0.0164, -0.0267,  ..., -0.0042, -0.0281,  0.0041],
+        [ 0.0032, -0.0126, -0.0096,  ...,  0.0111,  0.0185,  0.0190],
+        [-0.0030, -0.0196,  0.0251,  ..., -0.0446, -0.0268,  0.0076],
+        ...,
+        [ 0.0294,  0.0326, -0.0213,  ..., -0.0458, -0.0249, -0.0056],
+        [-0.0125, -0.0143,  0.0084,  ..., -0.0012, -0.0151,  0.0048],
+        [-0.0103,  0.0260, -0.0452,  ..., -0.0389,  0.0249, -0.0233]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 2 graph: Block(num_src_nodes=9475, num_dst_nodes=1000, num_edges=4510) inputs; torch.Size([9475, 16])
+weight2?: tensor([[ 0.0230,  0.0150, -0.0052,  ...,  0.0050, -0.0026, -0.0284],
+        [ 0.0436, -0.0006,  0.0051,  ..., -0.0465, -0.0348, -0.0281],
+        [-0.0365, -0.0024,  0.0177,  ..., -0.0453,  0.0257, -0.0175],
+        ...,
+        [ 0.0443, -0.0169, -0.0287,  ...,  0.0271, -0.0202, -0.0327],
+        [-0.0221,  0.0103, -0.0047,  ..., -0.0010, -0.0444, -0.0235],
+        [-0.0209,  0.0299,  0.0080,  ..., -0.0413, -0.0375, -0.0247]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 3 graph: Block(num_src_nodes=9475, num_dst_nodes=1000, num_edges=4123) inputs; torch.Size([9475, 16])
+weight2?: tensor([[-0.0090, -0.0069,  0.0137,  ..., -0.0120,  0.0295, -0.0346],
+        [ 0.0350,  0.0200, -0.0007,  ...,  0.0121, -0.0051, -0.0001],
+        [ 0.0445,  0.0210, -0.0196,  ..., -0.0423,  0.0151, -0.0284],
+        ...,
+        [-0.0143,  0.0390, -0.0039,  ...,  0.0067, -0.0181, -0.0293],
+        [ 0.0131, -0.0174, -0.0264,  ...,  0.0096,  0.0099, -0.0182],
+        [ 0.0075, -0.0162,  0.0121,  ..., -0.0037,  0.0136,  0.0195]],
+       grad_fn=<SqueezeBackward1>)
+Epoch 00000 | Batch 001 | Train Acc: 0.0380 | Train Loss: 5.8423 | Time: 0.3021
+rel_id: 0 graph: Block(num_src_nodes=32323, num_dst_nodes=9660, num_edges=45384) inputs; torch.Size([32323, 16])
+rel_id: 1 graph: Block(num_src_nodes=9545, num_dst_nodes=9660, num_edges=93443) inputs; torch.Size([9545, 16])
+rel_id: 2 graph: Block(num_src_nodes=1273, num_dst_nodes=4413, num_edges=6515) inputs; torch.Size([1273, 16])
+rel_id: 3 graph: Block(num_src_nodes=117119, num_dst_nodes=9660, num_edges=58441) inputs; torch.Size([117119, 16])
+rel_id: 4 graph: Block(num_src_nodes=117119, num_dst_nodes=3332, num_edges=32569) inputs; torch.Size([117119, 16])
+rel_id: 5 graph: Block(num_src_nodes=117119, num_dst_nodes=9660, num_edges=58659) inputs; torch.Size([117119, 16])
+rel_id: 6 graph: Block(num_src_nodes=117119, num_dst_nodes=4413, num_edges=29127) inputs; torch.Size([117119, 16])
+rel_id: 0 graph: Block(num_src_nodes=4413, num_dst_nodes=1000, num_edges=4474) inputs; torch.Size([4413, 16])
+weight2?: tensor([[ 0.0289,  0.0469, -0.0151,  ..., -0.0189,  0.0106, -0.0464],
+        [ 0.0387,  0.0563, -0.0194,  ..., -0.0098, -0.0453, -0.0367],
+        [ 0.0038,  0.0042, -0.0073,  ...,  0.0060, -0.0036, -0.0257],
+        ...,
+        [ 0.0135, -0.0118, -0.0500,  ..., -0.0265, -0.0078, -0.0394],
+        [-0.0451,  0.0204, -0.0552,  ..., -0.0377,  0.0313, -0.0088],
+        [-0.0254,  0.0385, -0.0089,  ...,  0.0009, -0.0188, -0.0127]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 1 graph: Block(num_src_nodes=3332, num_dst_nodes=1000, num_edges=9736) inputs; torch.Size([3332, 16])
+weight2?: tensor([[-0.0080,  0.0264, -0.0366,  ..., -0.0141, -0.0184, -0.0057],
+        [ 0.0126, -0.0026, -0.0195,  ...,  0.0012,  0.0279,  0.0092],
+        [ 0.0069, -0.0096,  0.0153,  ..., -0.0545, -0.0171, -0.0022],
+        ...,
+        [ 0.0393,  0.0426, -0.0311,  ..., -0.0557, -0.0316, -0.0154],
+        [-0.0194, -0.0066,  0.0007,  ..., -0.0088, -0.0225, -0.0028],
+        [-0.0004,  0.0360, -0.0551,  ..., -0.0488,  0.0221, -0.0331]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 2 graph: Block(num_src_nodes=9660, num_dst_nodes=1000, num_edges=4601) inputs; torch.Size([9660, 16])
+weight2?: tensor([[ 0.0330,  0.0250, -0.0152,  ..., -0.0049, -0.0115, -0.0384],
+        [ 0.0535,  0.0094, -0.0049,  ..., -0.0565, -0.0448, -0.0381],
+        [-0.0458,  0.0073,  0.0078,  ..., -0.0553,  0.0160, -0.0274],
+        ...,
+        [ 0.0538, -0.0071, -0.0387,  ...,  0.0172, -0.0297, -0.0427],
+        [-0.0131,  0.0186, -0.0131,  ..., -0.0091, -0.0521, -0.0317],
+        [-0.0109,  0.0399, -0.0020,  ..., -0.0513, -0.0474, -0.0346]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 3 graph: Block(num_src_nodes=9660, num_dst_nodes=1000, num_edges=4260) inputs; torch.Size([9660, 16])
+weight2?: tensor([[ 0.0008,  0.0031,  0.0037,  ..., -0.0220,  0.0393, -0.0443],
+        [ 0.0445,  0.0299, -0.0107,  ...,  0.0021, -0.0143, -0.0100],
+        [ 0.0377,  0.0304, -0.0295,  ..., -0.0523,  0.0190, -0.0377],
+        ...,
+        [-0.0050,  0.0486, -0.0137,  ..., -0.0032, -0.0171, -0.0389],
+        [ 0.0204, -0.0090, -0.0346,  ...,  0.0015,  0.0025, -0.0265],
+        [ 0.0169, -0.0063,  0.0021,  ..., -0.0137,  0.0236,  0.0096]],
+       grad_fn=<SqueezeBackward1>)
+Epoch 00000 | Batch 002 | Train Acc: 0.0650 | Train Loss: 5.8218 | Time: 0.3000
+rel_id: 0 graph: Block(num_src_nodes=32014, num_dst_nodes=9513, num_edges=44441) inputs; torch.Size([32014, 16])
+rel_id: 1 graph: Block(num_src_nodes=9804, num_dst_nodes=9513, num_edges=91901) inputs; torch.Size([9804, 16])
+rel_id: 2 graph: Block(num_src_nodes=1228, num_dst_nodes=4362, num_edges=6296) inputs; torch.Size([1228, 16])
+rel_id: 3 graph: Block(num_src_nodes=115868, num_dst_nodes=9513, num_edges=56568) inputs; torch.Size([115868, 16])
+rel_id: 4 graph: Block(num_src_nodes=115868, num_dst_nodes=3325, num_edges=32501) inputs; torch.Size([115868, 16])
+rel_id: 5 graph: Block(num_src_nodes=115868, num_dst_nodes=9513, num_edges=56688) inputs; torch.Size([115868, 16])
+rel_id: 6 graph: Block(num_src_nodes=115868, num_dst_nodes=4362, num_edges=28582) inputs; torch.Size([115868, 16])
+rel_id: 0 graph: Block(num_src_nodes=4362, num_dst_nodes=1000, num_edges=4402) inputs; torch.Size([4362, 16])
+weight2?: tensor([[ 0.0389,  0.0563, -0.0247,  ..., -0.0284,  0.0030, -0.0562],
+        [ 0.0318,  0.0660, -0.0291,  ..., -0.0195, -0.0550, -0.0464],
+        [ 0.0138,  0.0140, -0.0172,  ..., -0.0037, -0.0132, -0.0354],
+        ...,
+        [ 0.0038, -0.0018, -0.0600,  ..., -0.0363, -0.0169, -0.0493],
+        [-0.0531,  0.0292, -0.0644,  ..., -0.0466,  0.0274, -0.0179],
+        [-0.0327,  0.0481, -0.0184,  ..., -0.0086, -0.0271, -0.0213]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 1 graph: Block(num_src_nodes=3325, num_dst_nodes=1000, num_edges=9645) inputs; torch.Size([3325, 16])
+weight2?: tensor([[ 0.0018,  0.0365, -0.0466,  ..., -0.0241, -0.0092, -0.0156],
+        [ 0.0220,  0.0074, -0.0294,  ..., -0.0087,  0.0374, -0.0006],
+        [ 0.0168,  0.0004,  0.0054,  ..., -0.0644, -0.0074, -0.0120],
+        ...,
+        [ 0.0491,  0.0526, -0.0410,  ..., -0.0656, -0.0387, -0.0252],
+        [-0.0267,  0.0012, -0.0073,  ..., -0.0169, -0.0305, -0.0108],
+        [ 0.0093,  0.0459, -0.0650,  ..., -0.0587,  0.0160, -0.0429]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 2 graph: Block(num_src_nodes=9513, num_dst_nodes=1000, num_edges=4395) inputs; torch.Size([9513, 16])
+weight2?: tensor([[ 0.0386,  0.0347, -0.0236,  ..., -0.0134, -0.0184, -0.0468],
+        [ 0.0624,  0.0183, -0.0146,  ..., -0.0662, -0.0543, -0.0478],
+        [-0.0534,  0.0150, -0.0010,  ..., -0.0641,  0.0081, -0.0362],
+        ...,
+        [ 0.0513,  0.0010, -0.0424,  ...,  0.0084, -0.0374, -0.0514],
+        [-0.0158,  0.0260, -0.0212,  ..., -0.0170, -0.0598, -0.0398],
+        [-0.0023,  0.0499, -0.0024,  ..., -0.0608, -0.0564, -0.0445]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 3 graph: Block(num_src_nodes=9513, num_dst_nodes=1000, num_edges=4292) inputs; torch.Size([9513, 16])
+weight2?: tensor([[ 0.0033,  0.0130, -0.0046,  ..., -0.0304,  0.0361, -0.0516],
+        [ 0.0434,  0.0386, -0.0207,  ..., -0.0074, -0.0222, -0.0187],
+        [ 0.0308,  0.0381, -0.0383,  ..., -0.0611,  0.0130, -0.0455],
+        ...,
+        [-0.0090,  0.0567, -0.0221,  ..., -0.0116, -0.0234, -0.0468],
+        [ 0.0165, -0.0017, -0.0427,  ..., -0.0064, -0.0052, -0.0346],
+        [ 0.0125,  0.0038, -0.0077,  ..., -0.0230,  0.0293,  0.0008]],
+       grad_fn=<SqueezeBackward1>)
+Epoch 00000 | Batch 003 | Train Acc: 0.0550 | Train Loss: 5.7964 | Time: 0.3038
+rel_id: 0 graph: Block(num_src_nodes=30896, num_dst_nodes=9238, num_edges=42747) inputs; torch.Size([30896, 16])
+rel_id: 1 graph: Block(num_src_nodes=9656, num_dst_nodes=9238, num_edges=88820) inputs; torch.Size([9656, 16])
+rel_id: 2 graph: Block(num_src_nodes=1310, num_dst_nodes=4292, num_edges=6380) inputs; torch.Size([1310, 16])
+rel_id: 3 graph: Block(num_src_nodes=114610, num_dst_nodes=9238, num_edges=55048) inputs; torch.Size([114610, 16])
+rel_id: 4 graph: Block(num_src_nodes=114610, num_dst_nodes=3360, num_edges=32970) inputs; torch.Size([114610, 16])
+rel_id: 5 graph: Block(num_src_nodes=114610, num_dst_nodes=9238, num_edges=55384) inputs; torch.Size([114610, 16])
+rel_id: 6 graph: Block(num_src_nodes=114610, num_dst_nodes=4292, num_edges=28314) inputs; torch.Size([114610, 16])
+rel_id: 0 graph: Block(num_src_nodes=4292, num_dst_nodes=1000, num_edges=4325) inputs; torch.Size([4292, 16])
+weight2?: tensor([[ 0.0488,  0.0654, -0.0339,  ..., -0.0376, -0.0049, -0.0647],
+        [ 0.0238,  0.0754, -0.0383,  ..., -0.0289, -0.0644, -0.0530],
+        [ 0.0234,  0.0236, -0.0267,  ..., -0.0133, -0.0225, -0.0452],
+        ...,
+        [-0.0048,  0.0081, -0.0697,  ..., -0.0459, -0.0258, -0.0587],
+        [-0.0618,  0.0379, -0.0731,  ..., -0.0554,  0.0208, -0.0273],
+        [-0.0410,  0.0573, -0.0275,  ..., -0.0177, -0.0353, -0.0300]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 1 graph: Block(num_src_nodes=3360, num_dst_nodes=1000, num_edges=9663) inputs; torch.Size([3360, 16])
+weight2?: tensor([[ 0.0088,  0.0435, -0.0535,  ..., -0.0310, -0.0147, -0.0240],
+        [ 0.0311,  0.0161, -0.0391,  ..., -0.0184,  0.0361, -0.0097],
+        [ 0.0263,  0.0083, -0.0032,  ..., -0.0730, -0.0111, -0.0207],
+        ...,
+        [ 0.0590,  0.0603, -0.0490,  ..., -0.0736, -0.0445, -0.0333],
+        [-0.0282,  0.0094, -0.0153,  ..., -0.0251, -0.0387, -0.0194],
+        [ 0.0164,  0.0529, -0.0718,  ..., -0.0654,  0.0101, -0.0513]],
+       grad_fn=<SqueezeBackward1>)
+rel_id: 2 graph: Block(num_src_nodes=9238, num_dst_nodes=1000, num_edges=4335) inputs; torch.Size([9238, 16])
+weight2?: tensor([[ 3.7035e-02,  4.2593e-02, -3.1173e-02,  ..., -2.0934e-02,
+         -2.5369e-02, -5.5691e-02],
+        [ 6.2972e-02,  2.6456e-02, -2.3168e-02,  ..., -7.4776e-02,
+         -6.2580e-02, -5.6563e-02],
+        [-6.1366e-02,  2.2481e-02, -8.8326e-03,  ..., -7.1910e-02,
+          7.5361e-04, -4.4453e-02],
+        ...,
+        [ 5.5134e-02,  8.4212e-03, -4.8718e-02,  ...,  6.1178e-04,
+         -4.4723e-02, -5.9597e-02],
+        [-1.1358e-02,  3.3651e-02, -2.8865e-02,  ..., -2.4964e-02,
+         -6.7720e-02, -4.8275e-02],
+        [-3.4864e-05,  5.9719e-02, -7.3428e-03,  ..., -6.9065e-02,
+         -6.4251e-02, -5.2736e-02]], grad_fn=<SqueezeBackward1>)
+rel_id: 3 graph: Block(num_src_nodes=9238, num_dst_nodes=1000, num_edges=4065) inputs; torch.Size([9238, 16])
+weight2?: tensor([[ 0.0036,  0.0216, -0.0112,  ..., -0.0379,  0.0298, -0.0597],
+        [ 0.0375,  0.0466, -0.0289,  ..., -0.0158, -0.0295, -0.0264],
+        [ 0.0232,  0.0457, -0.0460,  ..., -0.0688,  0.0063, -0.0528],
+        ...,
+        [-0.0111,  0.0643, -0.0295,  ..., -0.0194, -0.0303, -0.0543],
+        [ 0.0213,  0.0059, -0.0504,  ..., -0.0143, -0.0130, -0.0426],
+        [ 0.0056,  0.0137, -0.0158,  ..., -0.0312,  0.0252, -0.0070]],
+       grad_fn=<SqueezeBackward1>)Using backend: pytorch
+
+Epoch 00000 | Batch 004 | Train Acc: 0.0370 | Train Loss: 5.7539 | Time: 0.2951
+rel_id: 0 graph: Block(num_src_nodes=30996, num_dst_nodes=9135, num_edges=43276) inputs; torch.Size([30996, 16])
+rel_id: 1 graph: Block(num_src_nodes=9620, num_dst_nodes=9135, num_edges=87969) inputs; torch.Size([9620, 16])
+rel_id: 2 graph: Block(num_src_nodes=1269, num_dst_nodes=4439, num_edges=6217) inputs; torch.Size([1269, 16])
+rel_id: 3 graph: Block(num_src_nodes=113030, num_dst_nodes=9135, num_edges=52880) inputs; torch.Size([113030, 16])
+rel_id: 4 graph: Block(num_src_nodes=113030, num_dst_nodes=3410, num_edges=33436) inputs; torch.Size([113030, 16])
+rel_id: 5 graph: Block(num_src_nodes=113030, num_dst_nodes=9135, num_edges=54224) inputs; torch.Size([113030, 16])
+rel_id: 6 graph: Block(num_src_nodes=113030, num_dst_nodes=4439, num_edges=28355) inputs; torch.Size([113030, 16])
+-----------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-----------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                  GSpMM        39.35%       4.604ms        43.09%       5.042ms     720.245us       4.642ms        40.02%       5.036ms     719.474us             7  
+          rf-spmm-type1         2.39%     279.349us        12.02%       1.407ms       1.407ms     283.264us         2.44%       1.408ms       1.408ms             1  
+          rf-spmm-type3         2.20%     257.624us        10.24%       1.199ms       1.199ms     259.904us         2.24%       1.200ms       1.200ms             1  
+          rf-spmm-type5         2.20%     257.295us         9.81%       1.148ms       1.148ms     259.808us         2.24%       1.149ms       1.149ms             1  
+          rf-spmm-type0         2.64%     309.441us         9.03%       1.057ms       1.057ms     312.576us         2.69%       1.058ms       1.058ms             1  
+              aten::mul         6.41%     750.346us         7.49%     876.305us      62.593us     769.374us         6.63%     871.549us      62.254us            14  
+          rf-spmm-type4         2.20%     256.915us         7.14%     834.848us     834.848us     269.632us         2.32%     836.191us     836.191us             1  
+          rf-spmm-type6         2.30%     268.962us         6.80%     795.458us     795.458us     270.337us         2.33%     796.384us     796.384us             1  
+            aten::zeros         2.09%     244.260us         5.59%     654.298us      31.157us     270.462us         2.33%     616.701us      29.367us            21  
+     rf-normalize-type0         2.15%     251.670us         4.95%     579.650us     579.650us     261.121us         2.25%     579.552us     579.552us             1  
+          rf-spmm-type2         2.26%     264.104us         4.37%     511.493us     511.493us     269.312us         2.32%     513.120us     513.120us             1  
+     rf-normalize-type1         1.63%     190.293us         4.28%     500.448us     500.448us     223.170us         1.92%     501.249us     501.249us             1  
+     rf-normalize-type3         1.55%     181.281us         4.02%     470.437us     470.437us     188.831us         1.63%     471.008us     471.008us             1  
+     rf-normalize-type6         1.75%     204.419us         3.97%     463.928us     463.928us     215.008us         1.85%     464.896us     464.896us             1  
+     rf-normalize-type5         1.53%     179.065us         3.96%     463.134us     463.134us     189.470us         1.63%     463.968us     463.968us             1  
+-----------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 11.700ms
+Self CUDA time total: 11.599ms
+

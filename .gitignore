@@ -164,3 +164,4 @@ config.cmake
 
 # ogb data
 examples/pytorch/gat/dataset
+examples/pytorch/rgcn/dataset

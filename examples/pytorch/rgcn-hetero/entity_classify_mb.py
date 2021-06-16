@@ -13,6 +13,8 @@ import dgl
 from dgl.data.rdf import AIFBDataset, MUTAGDataset, BGSDataset, AMDataset
 from model import EntityClassify, RelGraphEmbed
 
+from ogb.nodeproppred import DglNodePropPredDataset
+
 def extract_embed(node_embed, input_nodes):
     emb = {}
     for ntype, nid in input_nodes.items():
@@ -56,24 +58,54 @@ def main(args):
         dataset = BGSDataset()
     elif args.dataset == 'am':
         dataset = AMDataset()
+    elif args.dataset == 'ogbn-mag':
+        dataset = DglNodePropPredDataset(name=args.dataset)
+        ogb_dataset = True
     else:
         raise ValueError()
 
-    g = dataset[0]
-    category = dataset.predict_category
-    num_classes = dataset.num_classes
-    train_mask = g.nodes[category].data.pop('train_mask')
-    test_mask = g.nodes[category].data.pop('test_mask')
-    train_idx = th.nonzero(train_mask, as_tuple=False).squeeze()
-    test_idx = th.nonzero(test_mask, as_tuple=False).squeeze()
-    labels = g.nodes[category].data.pop('labels')
+    if ogb_dataset is True:
+        split_idx = dataset.get_idx_split()
+        train_idx = split_idx["train"]['paper']
+        val_idx = split_idx["valid"]['paper']
+        test_idx = split_idx["test"]['paper']
+        hg_orig, labels = dataset[0]
+        subgs = {}
+        for etype in hg_orig.canonical_etypes:
+            u, v = hg_orig.all_edges(etype=etype)
+            subgs[etype] = (u, v)
+            subgs[(etype[2], 'rev-'+etype[1], etype[0])] = (v, u)
+        hg = dgl.heterograph(subgs)
+        hg.nodes['paper'].data['feat'] = hg_orig.nodes['paper'].data['feat']
+        labels = labels['paper'].squeeze()
 
-    # split dataset into train, validate, test
-    if args.validation:
-        val_idx = train_idx[:len(train_idx) // 5]
-        train_idx = train_idx[len(train_idx) // 5:]
+        num_rels = len(hg.canonical_etypes)
+        num_of_ntype = len(hg.ntypes)
+        num_classes = dataset.num_classes
+        if args.dataset == 'ogbn-mag':
+            category = 'paper'
+        print('Number of relations: {}'.format(num_rels))
+        print('Number of class: {}'.format(num_classes))
+        print('Number of train: {}'.format(len(train_idx)))
+        print('Number of valid: {}'.format(len(val_idx)))
+        print('Number of test: {}'.format(len(test_idx)))
+        g = hg
     else:
-        val_idx = train_idx
+        g = dataset[0]
+        category = dataset.predict_category
+        num_classes = dataset.num_classes
+        train_mask = g.nodes[category].data.pop('train_mask')
+        test_mask = g.nodes[category].data.pop('test_mask')
+        train_idx = th.nonzero(train_mask, as_tuple=False).squeeze()
+        test_idx = th.nonzero(test_mask, as_tuple=False).squeeze()
+        labels = g.nodes[category].data.pop('labels')
+
+        # split dataset into train, validate, test
+        if args.validation:
+            val_idx = train_idx[:len(train_idx) // 5]
+            train_idx = train_idx[len(train_idx) // 5:]
+        else:
+            val_idx = train_idx
 
     # create embeddings
     embed_layer = RelGraphEmbed(g, args.n_hidden)
@@ -130,7 +162,8 @@ def main(args):
             if use_cuda:
                 emb = {k : e.cuda() for k, e in emb.items()}
                 lbl = lbl.cuda()
-            logits = model(emb, blocks)[category]
+            # logits = model(emb, blocks)[category]
+            logits = model(epoch, i, emb, blocks)[category]
             loss = F.cross_entropy(logits, lbl)
             loss.backward()
             optimizer.step()

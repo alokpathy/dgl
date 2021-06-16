@@ -1,0 +1,33 @@
+Using backend: pytorch
+Namespace(batch_size=1000, data_cpu=False, dataset='ogbn-mag', dropout=0, fanout=10, gpu=-1, l2norm=0, lr=0.01, model_path=None, n_bases=-1, n_epochs=2, n_hidden=16, n_layers=2, use_self_loop=False, validation=False)
+Number of relations: 8
+Number of class: 349
+Number of train: 629571
+Number of valid: 64879
+Number of test: 41939
+start training...
+rel_id: 0 graph: Block(num_src_nodes=32513, num_dst_nodes=9337, num_edges=44997) inputs; torch.Size([32513, 16])
+Traceback (most recent call last):
+  File "entity_classify_mb.py", line 233, in <module>
+    main(args)
+  File "entity_classify_mb.py", line 166, in main
+    logits = model(epoch, i, emb, blocks)[category]
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/torch/nn/modules/module.py", line 889, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/home/ubuntu/dgl/examples/pytorch/rgcn-hetero/model.py", line 223, in forward
+    h = layer(block, h)
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/torch/nn/modules/module.py", line 889, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/home/ubuntu/dgl/examples/pytorch/rgcn-hetero/model.py", line 113, in forward
+    hs = self.conv(g, inputs, mod_kwargs=wdict)
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/torch/nn/modules/module.py", line 889, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg/dgl/nn/pytorch/hetero.py", line 183, in forward
+    **mod_kwargs.get(etype, {}))
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/torch/nn/modules/module.py", line 889, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/dgl-0.7-py3.6-linux-x86_64.egg/dgl/nn/pytorch/conv/graphconv.py", line 432, in forward
+    th.cuda.synchronize()
+  File "/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/torch/cuda/__init__.py", line 402, in synchronize
+    return torch._C._cuda_synchronize()
+KeyboardInterrupt

@@ -8,6 +8,8 @@ import dgl
 import dgl.nn as dglnn
 import tqdm
 
+import torch.autograd.profiler as profiler
+
 class RelGraphConvLayer(nn.Module):
     r"""Relational graph convolution layer.
 
@@ -200,7 +202,7 @@ class EntityClassify(nn.Module):
             self.num_bases, activation=None,
             self_loop=self.use_self_loop))
 
-    def forward(self, h=None, blocks=None):
+    def forward(self, epoch, step, h=None, blocks=None):
         if h is None:
             # full graph training
             h = self.embed_layer()
@@ -210,8 +212,16 @@ class EntityClassify(nn.Module):
                 h = layer(self.g, h)
         else:
             # minibatch training
+            layer_count = 0
             for layer, block in zip(self.layers, blocks):
-                h = layer(block, h)
+                if layer_count == 0 and epoch == 0 and step == 5:
+                    with profiler.profile(use_cuda=True) as prof:
+                        h = layer(block, h)
+                    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                    exit()
+                else:
+                    h = layer(block, h)
+                layer_count += 1
         return h
 
     def inference(self, g, batch_size, device, num_workers, x=None):

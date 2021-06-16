@@ -1,0 +1,226 @@
+==23828== NVPROF is profiling process 23828, command: python train_sampling.py --dataset ogbn-products --num-epochs 5
+Namespace(attn_drop=0.6, batch_size=1000, data_cpu=False, dataset='ogbn-products', dropout=0.5, eval_every=5, fan_out='10,25', gpu=0, in_drop=0.6, inductive=False, log_every=20, lr=0.003, negative_slope=0.2, num_epochs=5, num_heads=8, num_hidden=8, num_layers=1, num_out_heads=1, num_workers=4, residual=False, sample_gpu=False)
+load ogbn-products
+finish loading ogbn-products
+finish constructing ogbn-products
+Graph(num_nodes=2449029, num_edges=126167053,
+      ndata_schemes={'feat': Scheme(shape=(100,), dtype=torch.float32), 'features': Scheme(shape=(100,), dtype=torch.float32), 'labels': Scheme(shape=(), dtype=torch.int64), 'train_mask': Scheme(shape=(), dtype=torch.bool), 'val_mask': Scheme(shape=(), dtype=torch.bool), 'test_mask': Scheme(shape=(), dtype=torch.bool)}
+      edata_schemes={})
+GAT(
+  (gat_layers): ModuleList(
+    (0): GATConv(
+      (fc): Linear(in_features=100, out_features=64, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+    (1): GATConv(
+      (fc): Linear(in_features=64, out_features=47, bias=False)
+      (feat_drop): Dropout(p=0.6, inplace=False)
+      (attn_drop): Dropout(p=0.6, inplace=False)
+      (leaky_relu): LeakyReLU(negative_slope=0.2)
+    )
+  )
+)
+Using backend: pytorch
+Epoch 00000 | Step 00000 | Loss 31.9155 | Train Acc 0.0280 | Speed (samples/sec) nan | GPU 1358.3 MB
+Epoch 00000 | Step 00020 | Loss 8.4252 | Train Acc 0.0840 | Speed (samples/sec) 32935.1187 | GPU 1365.4 MB
+Epoch 00000 | Step 00040 | Loss 4.5141 | Train Acc 0.1480 | Speed (samples/sec) 32623.9705 | GPU 1365.7 MB
+Epoch 00000 | Step 00060 | Loss 4.1732 | Train Acc 0.1800 | Speed (samples/sec) 32240.3468 | GPU 1365.7 MB
+Epoch 00000 | Step 00080 | Loss 3.3834 | Train Acc 0.2250 | Speed (samples/sec) 32710.3028 | GPU 1365.7 MB
+Epoch 00000 | Step 00100 | Loss 3.0354 | Train Acc 0.2740 | Speed (samples/sec) 32788.2493 | GPU 1365.7 MB
+Epoch 00000 | Step 00120 | Loss 2.7675 | Train Acc 0.3110 | Speed (samples/sec) 32797.1214 | GPU 1366.1 MB
+Epoch 00000 | Step 00140 | Loss 2.5421 | Train Acc 0.3550 | Speed (samples/sec) 32751.9426 | GPU 1366.1 MB
+Epoch 00000 | Step 00160 | Loss 2.4185 | Train Acc 0.3780 | Speed (samples/sec) 32833.8470 | GPU 1366.2 MB
+Epoch 00000 | Step 00180 | Loss 2.2198 | Train Acc 0.4230 | Speed (samples/sec) 32965.2290 | GPU 1366.2 MB
+Epoch Time(s): 8.7423
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/numpy/core/fromnumeric.py:3373: RuntimeWarning: Mean of empty slice.
+  out=out, **kwargs)
+/home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.6/site-packages/numpy/core/_methods.py:170: RuntimeWarning: invalid value encountered in double_scalars
+  ret = ret.dtype.type(ret / rcount)
+Epoch 00001 | Step 00000 | Loss 2.2039 | Train Acc 0.4150 | Speed (samples/sec) 33349.5951 | GPU 1366.2 MB
+Epoch 00001 | Step 00020 | Loss 2.0575 | Train Acc 0.4760 | Speed (samples/sec) 33514.2942 | GPU 1367.0 MB
+Epoch 00001 | Step 00040 | Loss 2.0457 | Train Acc 0.4380 | Speed (samples/sec) 33516.1135 | GPU 1367.0 MB
+Epoch 00001 | Step 00060 | Loss 1.8666 | Train Acc 0.4990 | Speed (samples/sec) 33528.1384 | GPU 1367.0 MB
+Epoch 00001 | Step 00080 | Loss 1.8857 | Train Acc 0.5030 | Speed (samples/sec) 33450.2583 | GPU 1367.0 MB
+Epoch 00001 | Step 00100 | Loss 1.8451 | Train Acc 0.5090 | Speed (samples/sec) 33481.9731 | GPU 1367.0 MB
+Epoch 00001 | Step 00120 | Loss 1.7085 | Train Acc 0.5720 | Speed (samples/sec) 33474.1991 | GPU 1369.0 MB
+Epoch 00001 | Step 00140 | Loss 1.7351 | Train Acc 0.5590 | Speed (samples/sec) 33523.4301 | GPU 1369.0 MB
+Epoch 00001 | Step 00160 | Loss 1.6920 | Train Acc 0.5540 | Speed (samples/sec) 33495.7139 | GPU 1369.0 MB
+Epoch 00001 | Step 00180 | Loss 1.5554 | Train Acc 0.5950 | Speed (samples/sec) 33452.6379 | GPU 1369.0 MB
+Epoch Time(s): 7.1942
+Epoch 00002 | Step 00000 | Loss 1.5622 | Train Acc 0.5870 | Speed (samples/sec) 33650.2605 | GPU 1369.0 MB
+Epoch 00002 | Step 00020 | Loss 1.5876 | Train Acc 0.5910 | Speed (samples/sec) 33618.4480 | GPU 1369.0 MB
+Epoch 00002 | Step 00040 | Loss 1.4990 | Train Acc 0.5920 | Speed (samples/sec) 33581.3956 | GPU 1369.0 MB
+Epoch 00002 | Step 00060 | Loss 1.4867 | Train Acc 0.5970 | Speed (samples/sec) 33607.9755 | GPU 1369.0 MB
+Epoch 00002 | Step 00080 | Loss 1.3825 | Train Acc 0.6430 | Speed (samples/sec) 33535.9830 | GPU 1369.0 MB
+Epoch 00002 | Step 00100 | Loss 1.4353 | Train Acc 0.6160 | Speed (samples/sec) 33517.0870 | GPU 1369.0 MB
+Epoch 00002 | Step 00120 | Loss 1.3508 | Train Acc 0.6450 | Speed (samples/sec) 33502.0818 | GPU 1369.0 MB
+Epoch 00002 | Step 00140 | Loss 1.3630 | Train Acc 0.6480 | Speed (samples/sec) 33478.9139 | GPU 1369.0 MB
+Epoch 00002 | Step 00160 | Loss 1.3488 | Train Acc 0.6490 | Speed (samples/sec) 33475.1332 | GPU 1369.0 MB
+Epoch 00002 | Step 00180 | Loss 1.2871 | Train Acc 0.6500 | Speed (samples/sec) 33480.2988 | GPU 1369.0 MB
+Epoch Time(s): 7.1981
+Epoch 00003 | Step 00000 | Loss 1.3914 | Train Acc 0.6450 | Speed (samples/sec) 33560.7662 | GPU 1369.0 MB
+Epoch 00003 | Step 00020 | Loss 1.3072 | Train Acc 0.6560 | Speed (samples/sec) 33607.0862 | GPU 1369.0 MB
+Epoch 00003 | Step 00040 | Loss 1.2556 | Train Acc 0.6610 | Speed (samples/sec) 33591.4915 | GPU 1369.0 MB
+Epoch 00003 | Step 00060 | Loss 1.2517 | Train Acc 0.6830 | Speed (samples/sec) 33553.4900 | GPU 1369.0 MB
+Epoch 00003 | Step 00080 | Loss 1.1920 | Train Acc 0.6890 | Speed (samples/sec) 33579.5774 | GPU 1369.0 MB
+Epoch 00003 | Step 00100 | Loss 1.2212 | Train Acc 0.6840 | Speed (samples/sec) 33564.9110 | GPU 1369.0 MB
+Epoch 00003 | Step 00120 | Loss 1.1729 | Train Acc 0.6890 | Speed (samples/sec) 33556.5593 | GPU 1369.0 MB
+Epoch 00003 | Step 00140 | Loss 1.1859 | Train Acc 0.6820 | Speed (samples/sec) 33562.5262 | GPU 1369.0 MB
+Epoch 00003 | Step 00160 | Loss 1.1887 | Train Acc 0.6720 | Speed (samples/sec) 33566.4892 | GPU 1369.0 MB
+Epoch 00003 | Step 00180 | Loss 1.1495 | Train Acc 0.7210 | Speed (samples/sec) 33540.6098 | GPU 1369.0 MB
+Epoch Time(s): 7.1467
+block: Block(num_src_nodes=184366, num_dst_nodes=24269, num_edges=241175) h.size: torch.Size([184366, 100])
+Epoch 00004 | Step 00000 | Loss 1.0534 | Train Acc 0.7240 | Speed (samples/sec) 33652.1259 | GPU 1369.0 MB
+Epoch 00004 | Step 00020 | Loss 1.1517 | Train Acc 0.6980 | Speed (samples/sec) 33613.5013 | GPU 1369.0 MB
+Epoch 00004 | Step 00040 | Loss 1.2090 | Train Acc 0.6850 | Speed (samples/sec) 33599.6680 | GPU 1369.0 MB
+Epoch 00004 | Step 00060 | Loss 1.1215 | Train Acc 0.7140 | Speed (samples/sec) 33569.2423 | GPU 1369.0 MB
+Epoch 00004 | Step 00080 | Loss 0.9993 | Train Acc 0.7360 | Speed (samples/sec) 33535.4142 | GPU 1369.0 MB
+Epoch 00004 | Step 00100 | Loss 1.0935 | Train Acc 0.7130 | Speed (samples/sec) 33514.6533 | GPU 1369.0 MB
+Epoch 00004 | Step 00120 | Loss 0.9903 | Train Acc 0.7460 | Speed (samples/sec) 33475.3557 | GPU 1369.0 MB
+Epoch 00004 | Step 00140 | Loss 1.1198 | Train Acc 0.7160 | Speed (samples/sec) 33441.1405 | GPU 1369.0 MB
+Epoch 00004 | Step 00160 | Loss 1.1114 | Train Acc 0.7050 | Speed (samples/sec) 33426.7095 | GPU 1369.0 MB
+Epoch 00004 | Step 00180 | Loss 1.0059 | Train Acc 0.7420 | Speed (samples/sec) 33410.2510 | GPU 1369.0 MB
+Epoch Time(s): 14.1639
+Traceback (most recent call last):
+  File "train_sampling.py", line 215, in <module>
+    run(args, device, data)
+  File "train_sampling.py", line 137, in run
+    print('Avg epoch time: {}'.format(avg / (epoch - 4)))
+ZeroDivisionError: division by zero
+==23828== Profiling application: python train_sampling.py --dataset ogbn-products --num-epochs 5
+==23828== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   21.83%  1.3061ms         2  653.03us  159.17us  1.1469ms  _ZN2at6native13reduce_kernelILi512ELi1ENS0_8ReduceOpIfNS0_14func_wrapper_tIfZNS0_11sum_functorIfffEclERNS_14TensorIteratorEEUlffE_EEjfLi4EEEEEvT1_
+                   19.34%  1.1567ms         1  1.1567ms  1.1567ms  1.1567ms  volta_sgemm_64x64_tn
+                   13.99%  836.73us         2  418.36us  79.839us  756.89us  void at::native::_GLOBAL__N__53_tmpxft_00001ed0_00000000_9_Dropout_compute_70_cpp1_ii_6a946dbb::fused_dropout_kernel_vec<float, float, unsigned int, int=1, int=4>(at::cuda::detail::TensorInfo<float, unsigned int>, unsigned int, at::cuda::detail<unsigned char, float>, float, float, at::PhiloxCudaState)
+                    7.65%  457.63us         2  228.81us  59.328us  398.30us  void at::native::unrolled_elementwise_kernel<at::native::MulFunctor<float>, at::detail::Array<char*, int=3>, OffsetCalculator<int=2, unsigned int>, OffsetCalculator<int=1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast>(int, float, at::native::MulFunctor<float>, char*, int=3, at::detail::Array<char*, int=3>, int=2)
+                    6.90%  412.70us         1  412.70us  412.70us  412.70us  void dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>(float const *, float const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>*, int*, int, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>* const *, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>* const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>* const , long, long, long const *, long const , long, long, long)
+                    6.31%  377.66us         3  125.89us  1.0880us  375.36us  [CUDA memcpy HtoD]
+                    3.09%  184.77us         3  61.588us  59.071us  62.911us  void dgl::cub::DeviceRadixSortDownsweepKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, bool=1, bool=0, int, long, int>(dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700 const *, dgl::cub::DeviceRadixSortDownsweepKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, bool=1, bool=0, int, long, int>*, bool=1 const *, dgl::cub::DeviceRadixSortDownsweepKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, bool=1, bool=0, int, long, int>**, bool=0*, dgl::cub::DeviceRadixSortDownsweepKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, bool=1, bool=0, int, long, int>**, int, int, dgl::cub::GridEvenShare<dgl::cub::DeviceRadixSortDownsweepKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, bool=1, bool=0, int, long, int>**>)
+                    2.84%  170.08us         1  170.08us  170.08us  170.08us  void dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Div<float>, bool=0, bool=0, int=1, int=2>(float const *, float const , dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Div<float>, bool=0, bool=0, int=1, int=2>*, int const *, int const , int const , long, long, long, long, long const *, long const , long, long, long)
+                    2.65%  158.34us         1  158.34us  158.34us  158.34us  void dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Add<float>, bool=0, bool=0, int=0, int=2>(float const *, float const , dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Add<float>, bool=0, bool=0, int=0, int=2>*, int const *, int const , int const , long, long, long, long, long const *, long const , long, long, long)
+                    2.51%  150.33us         1  150.33us  150.33us  150.33us  void dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Sub<float>, bool=0, bool=0, int=1, int=2>(float const *, float const , dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Sub<float>, bool=0, bool=0, int=1, int=2>*, int const *, int const , int const , long, long, long, long, long const *, long const , long, long, long)
+                    2.19%  130.78us         6  21.797us  4.2880us  31.776us  void at::native::vectorized_elementwise_kernel<int=4, at::native::FillFunctor<float>, at::detail::Array<char*, int=1>>(int, float, at::native::FillFunctor<float>)
+                    1.70%  101.82us         3  33.941us  33.792us  34.176us  void dgl::cub::RadixSortScanBinsKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, int>(long*, int)
+                    1.15%  69.087us         1  69.087us  69.087us  69.087us  void dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>(float const *, float const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>*, int*, int, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>* const *, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>* const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>* const , long, long, long const *, long const , long, long, long)
+                    1.09%  65.184us         1  65.184us  65.184us  65.184us  _ZN2at6native29vectorized_elementwise_kernelILi4EZZZNS0_15exp_kernel_cudaERNS_14TensorIteratorEENKUlvE_clEvENKUlvE2_clEvEUlfE_NS_6detail5ArrayIPcLi2EEEEEviT0_T1_
+                    1.06%  63.231us         1  63.231us  63.231us  63.231us  void dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>(float const *, float const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>*, int*, int, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>* const *, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>* const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>* const , long, long, long const *, long const , long, long, long)
+                    1.02%  61.023us         1  61.023us  61.023us  61.023us  void at::native::unrolled_elementwise_kernel<at::native::AddFunctor<float>, at::detail::Array<char*, int=3>, OffsetCalculator<int=2, unsigned int>, OffsetCalculator<int=1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast>(int, float, at::native::AddFunctor<float>, char*, int=3, at::detail::Array<char*, int=3>, int=2)
+                    0.99%  59.040us         1  59.040us  59.040us  59.040us  _ZN2at6native29vectorized_elementwise_kernelILi4EZZZNS0_80_GLOBAL__N__56_tmpxft_000016b8_00000000_9_Activation_compute_70_cpp1_ii_150aa41217leaky_relu_kernelERNS_14TensorIteratorEN3c106ScalarEENKUlvE_clEvENKUlvE2_clEvEUlfE_NS_6detail5ArrayIPcLi2EEEEEviT0_T1_
+                    0.93%  55.743us         3  18.581us  16.863us  19.776us  void dgl::cub::DeviceRadixSortUpsweepKernel<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700, bool=1, bool=0, int, int>(dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700 const *, bool=1*, dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700 const *, int, int, dgl::cub::GridEvenShare<dgl::cub::DeviceRadixSortPolicy<int, long, int>::Policy700 const *>)
+                    0.90%  53.696us         1  53.696us  53.696us  53.696us  _ZN2at6native29vectorized_elementwise_kernelILi4EZZZNS0_10elu_kernelERNS_14TensorIteratorEN3c106ScalarES5_S5_ENKUlvE_clEvENKUlvE2_clEvEUlfE_NS_6detail5ArrayIPcLi2EEEEEviT0_T1_
+                    0.41%  24.480us         2  12.240us  11.712us  12.768us  [CUDA memcpy DtoD]
+                    0.29%  17.536us         1  17.536us  17.536us  17.536us  void dgl::aten::impl::IndexSelectSingleKernel<int, long>(int const *, long const *, long, dgl::aten::impl::IndexSelectSingleKernel<int, long>*)
+                    0.26%  15.776us         1  15.776us  15.776us  15.776us  _ZN2at6native13reduce_kernelILi512ELi1ENS0_8ReduceOpIbNS0_14func_wrapper_tIbZZZNS0_14or_kernel_cudaERNS_14TensorIteratorEENKUlvE_clEvENKUlvE22_clEvEUlbbE_EEjbLi4EEEEEvT1_
+                    0.22%  13.056us         1  13.056us  13.056us  13.056us  void convert_CooToCsr_kernel<int=0>(int const *, int, int, int*)
+                    0.21%  12.384us         1  12.384us  12.384us  12.384us  void dgl::aten::impl::_CastKernel<long, int>(long const *, int*, unsigned long)
+                    0.17%  9.8880us         1  9.8880us  9.8880us  9.8880us  void dgl::aten::impl::_RangeKernel<long>(long*, dgl::aten::impl::_RangeKernel<long>, dgl::aten::impl::_RangeKernel<long>)
+                    0.08%  4.6400us         1  4.6400us  4.6400us  4.6400us  void at::native::vectorized_elementwise_kernel<int=4, at::native::FillFunctor<int>, at::detail::Array<char*, int=1>>(int, int, at::native::FillFunctor<int>)
+                    0.07%  4.2880us         1  4.2880us  4.2880us  4.2880us  void dgl::aten::impl::_CSRGetRowNNZKernel<int>(int const *, int const , dgl::aten::impl::_CSRGetRowNNZKernel<int>*, long)
+                    0.06%  3.4240us         1  3.4240us  3.4240us  3.4240us  _ZN84_GLOBAL__N__60_tmpxft_00002544_00000000_9_RangeFactories_compute_70_cpp1_ii_ce7ed09929elementwise_kernel_with_indexIiZZZN2at6native15arange_cuda_outERNS1_6TensorEN3c106ScalarES6_S6_ENKUlvE_clEvENKUlvE8_clEvEUllE_EEvT_T0_PN15function_traitsISB_E11result_typeE
+                    0.06%  3.3280us         1  3.3280us  3.3280us  3.3280us  void at::native::vectorized_elementwise_kernel<int=4, at::native::BUnaryFunctor<at::native::CompareEqFunctor<int>>, at::detail::Array<char*, int=2>>(int, int, at::native::CompareEqFunctor<int>)
+                    0.04%  2.1760us         1  2.1760us  2.1760us  2.1760us  [CUDA memcpy DtoH]
+      API calls:   99.97%  3.54279s        41  86.410ms  4.9660us  3.54218s  cudaLaunchKernel
+                    0.02%  625.96us         4  156.49us  12.381us  527.92us  cudaMemcpyAsync
+                    0.00%  151.51us         2  75.752us  6.2070us  145.30us  cudaStreamSynchronize
+                    0.00%  143.04us       279     512ns     296ns  5.6280us  cudaGetDevice
+                    0.00%  30.502us         2  15.251us  10.232us  20.270us  cudaMemcpy
+                    0.00%  24.190us        83     291ns     126ns  4.3110us  cudaGetLastError
+                    0.00%  14.174us        13  1.0900us     473ns  3.4900us  cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags
+                    0.00%  9.6120us         1  9.6120us  9.6120us  9.6120us  cuDeviceGetCount
+                    0.00%  8.6000us         1  8.6000us  8.6000us  8.6000us  cudaFuncGetAttributes
+                    0.00%  4.7530us         3  1.5840us     537ns  2.6690us  cudaSetDevice
+                    0.00%  2.7780us        18     154ns     127ns     220ns  cudaPeekAtLastError
+                    0.00%  2.5540us         2  1.2770us     348ns  2.2060us  cudaDeviceGetAttribute
+
+==23828== NVTX result:
+==23828==   Thread "<unnamed>" (id = 3158562624)
+==23828==     Domain "<unnamed>"
+==23828==       Range "rf-FC"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  289.36us         1  289.36us  289.36us  289.36us  rf-FC
+ GPU activities:  100.00%  1.1567ms         1  1.1567ms  1.1567ms  1.1567ms  volta_sgemm_64x64_tn
+      API calls:  100.00%  27.371us         1  27.371us  27.371us  27.371us  cudaLaunchKernel
+
+==23828==       Range "rf-activation"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  53.130us         1  53.130us  53.130us  53.130us  rf-activation
+ GPU activities:  100.00%  53.696us         1  53.696us  53.696us  53.696us  _ZN2at6native29vectorized_elementwise_kernelILi4EZZZNS0_10elu_kernelERNS_14TensorIteratorEN3c106ScalarES5_S5_ENKUlvE_clEvENKUlvE2_clEvEUlfE_NS_6detail5ArrayIPcLi2EEEEEviT0_T1_
+      API calls:  100.00%  14.412us         1  14.412us  14.412us  14.412us  cudaLaunchKernel
+
+==23828==       Range "rf-attn-dot-products"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  319.27us         1  319.27us  319.27us  319.27us  rf-attn-dot-products
+ GPU activities:   74.05%  1.3061ms         2  653.03us  159.17us  1.1469ms  _ZN2at6native13reduce_kernelILi512ELi1ENS0_8ReduceOpIfNS0_14func_wrapper_tIfZNS0_11sum_functorIfffEclERNS_14TensorIteratorEEUlffE_EEjfLi4EEEEEvT1_
+                   25.95%  457.63us         2  228.81us  59.328us  398.30us  void at::native::unrolled_elementwise_kernel<at::native::MulFunctor<float>, at::detail::Array<char*, int=3>, OffsetCalculator<int=2, unsigned int>, OffsetCalculator<int=1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast>(int, float, at::native::MulFunctor<float>, char*, int=3, at::detail::Array<char*, int=3>, int=2)
+      API calls:  100.00%  75.253us         4  18.813us  10.828us  26.151us  cudaLaunchKernel
+
+==23828==       Range "rf-attn-dot-products-update"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  197.35us         1  197.35us  197.35us  197.35us  rf-attn-dot-products-update
+No kernels were profiled in this range.
+No API activities were profiled in this range.
+
+==23828==       Range "rf-bias"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  77.997us         1  77.997us  77.997us  77.997us  rf-bias
+ GPU activities:  100.00%  61.023us         1  61.023us  61.023us  61.023us  void at::native::unrolled_elementwise_kernel<at::native::AddFunctor<float>, at::detail::Array<char*, int=3>, OffsetCalculator<int=2, unsigned int>, OffsetCalculator<int=1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast>(int, float, at::native::AddFunctor<float>, char*, int=3, at::detail::Array<char*, int=3>, int=2)
+      API calls:  100.00%  27.530us         1  27.530us  27.530us  27.530us  cudaLaunchKernel
+
+==23828==       Range "rf-drop-softmax"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  129.50us         1  129.50us  129.50us  129.50us  rf-drop-softmax
+ GPU activities:  100.00%  79.839us         1  79.839us  79.839us  79.839us  void at::native::_GLOBAL__N__53_tmpxft_00001ed0_00000000_9_Dropout_compute_70_cpp1_ii_6a946dbb::fused_dropout_kernel_vec<float, float, unsigned int, int=1, int=4>(at::cuda::detail::TensorInfo<float, unsigned int>, unsigned int, at::cuda::detail<unsigned char, float>, float, float, at::PhiloxCudaState)
+      API calls:  100.00%  12.352us         1  12.352us  12.352us  12.352us  cudaLaunchKernel
+
+==23828==       Range "rf-feat-drop"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  1.2609ms         1  1.2609ms  1.2609ms  1.2609ms  rf-feat-drop
+ GPU activities:  100.00%  756.89us         1  756.89us  756.89us  756.89us  void at::native::_GLOBAL__N__53_tmpxft_00001ed0_00000000_9_Dropout_compute_70_cpp1_ii_6a946dbb::fused_dropout_kernel_vec<float, float, unsigned int, int=1, int=4>(at::cuda::detail::TensorInfo<float, unsigned int>, unsigned int, at::cuda::detail<unsigned char, float>, float, float, at::PhiloxCudaState)
+      API calls:  100.00%  27.705us         1  27.705us  27.705us  27.705us  cudaLaunchKernel
+
+==23828==       Range "rf-leaky-relu"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  959.05us         1  959.05us  959.05us  959.05us  rf-leaky-relu
+ GPU activities:   86.41%  375.36us         1  375.36us  375.36us  375.36us  [CUDA memcpy HtoD]
+                   13.59%  59.040us         1  59.040us  59.040us  59.040us  _ZN2at6native29vectorized_elementwise_kernelILi4EZZZNS0_80_GLOBAL__N__56_tmpxft_000016b8_00000000_9_Activation_compute_70_cpp1_ii_150aa41217leaky_relu_kernelERNS_14TensorIteratorEN3c106ScalarEENKUlvE_clEvENKUlvE2_clEvEUlfE_NS_6detail5ArrayIPcLi2EEEEEviT0_T1_
+      API calls:   95.21%  527.92us         1  527.92us  527.92us  527.92us  cudaMemcpyAsync
+                    4.79%  26.583us         1  26.583us  26.583us  26.583us  cudaLaunchKernel
+
+==23828==       Range "rf-residual"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  4.3970us         1  4.3970us  4.3970us  4.3970us  rf-residual
+No kernels were profiled in this range.
+No API activities were profiled in this range.
+
+==23828==       Range "rf-sddmm"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  3.4501ms         1  3.4501ms  3.4501ms  3.4501ms  rf-sddmm
+ GPU activities:   83.29%  158.34us         1  158.34us  158.34us  158.34us  void dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Add<float>, bool=0, bool=0, int=0, int=2>(float const *, float const , dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Add<float>, bool=0, bool=0, int=0, int=2>*, int const *, int const , int const , long, long, long, long, long const *, long const , long, long, long)
+                   16.71%  31.776us         1  31.776us  31.776us  31.776us  void at::native::vectorized_elementwise_kernel<int=4, at::native::FillFunctor<float>, at::detail::Array<char*, int=1>>(int, float, at::native::FillFunctor<float>)
+      API calls:  100.00%  38.496us         2  19.248us  16.041us  22.455us  cudaLaunchKernel
+
+==23828==       Range "rf-softmax"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  554.31us         1  554.31us  554.31us  554.31us  rf-softmax
+ GPU activities:   28.62%  170.08us         1  170.08us  170.08us  170.08us  void dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Div<float>, bool=0, bool=0, int=1, int=2>(float const *, float const , dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Div<float>, bool=0, bool=0, int=1, int=2>*, int const *, int const , int const , long, long, long, long, long const *, long const , long, long, long)
+                   25.29%  150.33us         1  150.33us  150.33us  150.33us  void dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Sub<float>, bool=0, bool=0, int=1, int=2>(float const *, float const , dgl::aten::cuda::SDDMMCooKernel<int, float, dgl::aten::cuda::binary::Sub<float>, bool=0, bool=0, int=1, int=2>*, int const *, int const , int const , long, long, long, long, long const *, long const , long, long, long)
+                   12.08%  71.774us         4  17.943us  4.2880us  31.775us  void at::native::vectorized_elementwise_kernel<int=4, at::native::FillFunctor<float>, at::detail::Array<char*, int=1>>(int, float, at::native::FillFunctor<float>)
+                   11.62%  69.087us         1  69.087us  69.087us  69.087us  void dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>(float const *, float const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>*, int*, int, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>* const *, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>* const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Max<int, float, bool=0>, bool=0, bool=1>* const , long, long, long const *, long const , long, long, long)
+                   10.97%  65.184us         1  65.184us  65.184us  65.184us  _ZN2at6native29vectorized_elementwise_kernelILi4EZZZNS0_15exp_kernel_cudaERNS_14TensorIteratorEENKUlvE_clEvENKUlvE2_clEvEUlfE_NS_6detail5ArrayIPcLi2EEEEEviT0_T1_
+                   10.64%  63.231us         1  63.231us  63.231us  63.231us  void dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>(float const *, float const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>*, int*, int, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>* const *, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>* const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::CopyRhs<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=0, bool=1>* const , long, long, long const *, long const , long, long, long)
+                    0.78%  4.6400us         1  4.6400us  4.6400us  4.6400us  void at::native::vectorized_elementwise_kernel<int=4, at::native::FillFunctor<int>, at::detail::Array<char*, int=1>>(int, int, at::native::FillFunctor<int>)
+      API calls:  100.00%  129.75us        10  12.974us  8.2310us  22.832us  cudaLaunchKernel
+
+==23828==       Range "rf-spmm"
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+          Range:  100.00%  496.59us         1  496.59us  496.59us  496.59us  rf-spmm
+ GPU activities:   93.32%  412.70us         1  412.70us  412.70us  412.70us  void dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>(float const *, float const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>*, int*, int, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>* const *, dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>* const , dgl::aten::cuda::SpMMCsrKernel<int, float, dgl::aten::cuda::binary::Mul<float>, dgl::aten::cuda::reduce::Sum<int, float, bool=0>, bool=1, bool=1>* const , long, long, long const *, long const , long, long, long)
+                    6.16%  27.232us         1  27.232us  27.232us  27.232us  void at::native::vectorized_elementwise_kernel<int=4, at::native::FillFunctor<float>, at::detail::Array<char*, int=1>>(int, float, at::native::FillFunctor<float>)
+                    0.52%  2.3040us         2  1.1520us  1.0880us  1.2160us  [CUDA memcpy HtoD]
+      API calls:   53.31%  34.832us         2  17.416us  16.346us  18.486us  cudaLaunchKernel
+                   46.69%  30.502us         2  15.251us  10.232us  20.270us  cudaMemcpy
+
+======== Error: Application returned non-zero code 1
