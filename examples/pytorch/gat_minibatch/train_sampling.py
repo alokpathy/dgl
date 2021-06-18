@@ -64,6 +64,7 @@ def run(args, device, data):
     # Create PyTorch DataLoader for constructing blocks
     sampler = dgl.dataloading.MultiLayerNeighborSampler(
         [int(fanout) for fanout in args.fan_out.split(',')])
+    print(f"dataloader before", flush=True)
     dataloader = dgl.dataloading.NodeDataLoader(
         train_g,
         train_nid,
@@ -73,6 +74,7 @@ def run(args, device, data):
         shuffle=True,
         drop_last=False,
         num_workers=args.num_workers)
+    print(f"dataloader after", flush=True)
 
     # Define model and optimizer
     # model = SAGE(in_feats, args.num_hidden, n_classes, args.num_layers, F.relu, args.dropout)

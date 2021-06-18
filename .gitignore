@@ -165,3 +165,20 @@ config.cmake
 # ogb data
 examples/pytorch/gat/dataset
 examples/pytorch/rgcn/dataset
+
+# random profiling
+examples/pytorch/gat/*.qdrep
+examples/pytorch/gat/*.qdstrm
+examples/pytorch/gat/*.txt
+examples/pytorch/gat/*.prof
+examples/pytorch/gat/*.out
+examples/pytorch/gat_minibatch/*.qdrep
+examples/pytorch/gat_minibatch/*.qdstrm
+examples/pytorch/gat_minibatch/*.txt
+examples/pytorch/gat_minibatch/*.prof
+examples/pytorch/gat_minibatch/*.out
+examples/pytorch/rgcn-hetero/*.qdrep
+examples/pytorch/rgcn-hetero/*.qdstrm
+examples/pytorch/rgcn-hetero/*.txt
+examples/pytorch/rgcn-hetero/*.prof
+examples/pytorch/rgcn-hetero/*.out

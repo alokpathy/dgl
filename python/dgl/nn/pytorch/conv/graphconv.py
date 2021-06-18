@@ -416,39 +416,53 @@ class GraphConv(nn.Module):
             if self._in_feats > self._out_feats:
                 # mult W first to reduce the feature size for aggregation.
                 if weight is not None:
-                    with profiler.record_function("rf-FC-type{}".format(rel_id)):
-                        feat_src = th.matmul(feat_src, weight)
-                        th.cuda.synchronize()
-                graph.srcdata['h'] = feat_src
-                with profiler.record_function("rf-spmm-type{}".format(rel_id)):
-                    graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                    # with profiler.record_function("rf-FC-type{}".format(rel_id)):
+                    th.cuda.nvtx.range_push("rf-FC-type{}".format(rel_id))
+                    feat_src = th.matmul(feat_src, weight)
                     th.cuda.synchronize()
+                    th.cuda.nvtx.range_pop()
+                graph.srcdata['h'] = feat_src
+
+                # with profiler.record_function("rf-spmm-type{}".format(rel_id)):
+                th.cuda.nvtx.range_push("rf-spmm-type{}".format(rel_id))
+                graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                th.cuda.synchronize()
+                th.cuda.nvtx.range_pop()
+
                 rst = graph.dstdata['h']
             else:
                 # aggregate first then mult W
                 graph.srcdata['h'] = feat_src
                 spmm_start = time.time()
-                with profiler.record_function("rf-spmm-type{}".format(rel_id)):
-                    graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
-                    th.cuda.synchronize()
+
+                # with profiler.record_function("rf-spmm-type{}".format(rel_id)):
+                th.cuda.nvtx.range_push("rf-spmm-type{}".format(rel_id))
+                graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
+                th.cuda.synchronize()
+                th.cuda.nvtx.range_pop()
+
                 print(f"spmm_time: {time.time() - spmm_start}")
                 rst = graph.dstdata['h']
                 if weight is not None:
-                    with profiler.record_function("rf-FC-type{}".format(rel_id)):
-                        rst = th.matmul(rst, weight)
-                        th.cuda.synchronize()
+                    # with profiler.record_function("rf-FC-type{}".format(rel_id)):
+                    th.cuda.nvtx.range_push("rf-FC-type{}".format(rel_id))
+                    rst = th.matmul(rst, weight)
+                    th.cuda.synchronize()
+                    th.cuda.nvtx.range_pop()
 
-            with profiler.record_function("rf-normalize-type{}".format(rel_id)):
-                if self._norm != 'none':
-                    degs = graph.in_degrees().float().clamp(min=1)
-                    if self._norm == 'both':
-                        norm = th.pow(degs, -0.5)
-                    else:
-                        norm = 1.0 / degs
-                    shp = norm.shape + (1,) * (feat_dst.dim() - 1)
-                    norm = th.reshape(norm, shp)
-                    rst = rst * norm
-                th.cuda.synchronize()
+            # with profiler.record_function("rf-normalize-type{}".format(rel_id)):
+            th.cuda.nvtx.range_push("rf-normalize-type{}".format(rel_id))
+            if self._norm != 'none':
+                degs = graph.in_degrees().float().clamp(min=1)
+                if self._norm == 'both':
+                    norm = th.pow(degs, -0.5)
+                else:
+                    norm = 1.0 / degs
+                shp = norm.shape + (1,) * (feat_dst.dim() - 1)
+                norm = th.reshape(norm, shp)
+                rst = rst * norm
+            th.cuda.synchronize()
+            th.cuda.nvtx.range_pop()
 
             if self.bias is not None:
                 rst = rst + self.bias

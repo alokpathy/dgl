@@ -215,9 +215,13 @@ class EntityClassify(nn.Module):
             layer_count = 0
             for layer, block in zip(self.layers, blocks):
                 if layer_count == 0 and epoch == 0 and step == 5:
-                    with profiler.profile(use_cuda=True) as prof:
-                        h = layer(block, h)
-                    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                    th.cuda.cudart().cudaProfilerStart()
+                    th.cuda.nvtx.range_push("rf-totalrange")
+                    # with profiler.profile(use_cuda=True) as prof:
+                    h = layer(block, h)
+                    # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                    th.cuda.cudart().cudaProfilerStop()
+                    th.cuda.nvtx.range_pop()
                     exit()
                 else:
                     h = layer(block, h)

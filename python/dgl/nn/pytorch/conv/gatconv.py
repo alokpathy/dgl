@@ -285,17 +285,19 @@ class GATConv(nn.Module):
                         *dst_prefix_shape, self._num_heads, self._out_feats)
             else:
                 src_prefix_shape = dst_prefix_shape = feat.shape[:-1]
-                # torch.cuda.nvtx.range_push("rf-feat-drop")
-                with profiler.record_function("rf-feat-drop"):
-                    h_src = h_dst = self.feat_drop(feat)
-                    torch.cuda.synchronize()
-                # torch.cuda.nvtx.range_pop()
-                # torch.cuda.nvtx.range_push("rf-FC")
-                with profiler.record_function("rf-FC"):
-                    feat_src = feat_dst = self.fc(h_src).view(
-                        *src_prefix_shape, self._num_heads, self._out_feats)
-                    torch.cuda.synchronize()
-                # torch.cuda.nvtx.range_pop()
+                torch.cuda.nvtx.range_push("rf-feat-drop")
+                # with profiler.record_function("rf-feat-drop"):
+                h_src = h_dst = self.feat_drop(feat)
+                # torch.cuda.synchronize()
+                torch.cuda.nvtx.range_pop()
+
+                torch.cuda.nvtx.range_push("rf-FC")
+                # with profiler.record_function("rf-FC"):
+                feat_src = feat_dst = self.fc(h_src).view(
+                    *src_prefix_shape, self._num_heads, self._out_feats)
+                # torch.cuda.synchronize()
+                torch.cuda.nvtx.range_pop()
+
                 if graph.is_block:
                     feat_dst = feat_src[:graph.number_of_dst_nodes()]
                     h_dst = h_dst[:graph.number_of_dst_nodes()]
@@ -310,72 +312,82 @@ class GATConv(nn.Module):
             # save [Wh_i || Wh_j] on edges, which is not memory-efficient. Plus,
             # addition could be optimized with DGL's built-in function u_add_v,
             # which further speeds up computation and saves memory footprint.
-            # torch.cuda.nvtx.range_push("rf-attn-dot-products")
-            with profiler.record_function("rf-attn-dot-products"):
-                el = (feat_src * self.attn_l).sum(dim=-1).unsqueeze(-1)
-                er = (feat_dst * self.attn_r).sum(dim=-1).unsqueeze(-1)
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-attn-dot-products-update")
-            with profiler.record_function("rf-attn-dot-products-update"):
-                graph.srcdata.update({'ft': feat_src, 'el': el})
-                graph.dstdata.update({'er': er})
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-sddmm")
-            with profiler.record_function("rf-sddmm"):
-                # compute edge attention, el and er are a_l Wh_i and a_r Wh_j respectively.
-                graph.apply_edges(fn.u_add_v('el', 'er', 'e'))
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-leaky-relu")
-            with profiler.record_function("rf-leaky-relu"):
-                e = self.leaky_relu(graph.edata.pop('e'))
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-softmax")
-            with profiler.record_function("rf-softmax"):
-                # compute softmax
-                sm = edge_softmax(graph, e)
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-drop-softmax")
-            with profiler.record_function("rf-drop-softmax"):
-                graph.edata['a'] = self.attn_drop(sm)
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-spmm")
-            with profiler.record_function("rf-spmm"):
-                # message passing
-                graph.update_all(fn.u_mul_e('ft', 'a', 'm'),
-                                 fn.sum('m', 'ft'))
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-attn-dot-products")
+            # with profiler.record_function("rf-attn-dot-products"):
+            el = (feat_src * self.attn_l).sum(dim=-1).unsqueeze(-1)
+            er = (feat_dst * self.attn_r).sum(dim=-1).unsqueeze(-1)
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-attn-dot-products-update")
+            # with profiler.record_function("rf-attn-dot-products-update"):
+            graph.srcdata.update({'ft': feat_src, 'el': el})
+            graph.dstdata.update({'er': er})
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-sddmm")
+            # with profiler.record_function("rf-sddmm"):
+            # compute edge attention, el and er are a_l Wh_i and a_r Wh_j respectively.
+            graph.apply_edges(fn.u_add_v('el', 'er', 'e'))
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-leaky-relu")
+            # with profiler.record_function("rf-leaky-relu"):
+            e = self.leaky_relu(graph.edata.pop('e'))
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-softmax")
+            # with profiler.record_function("rf-softmax"):
+            # compute softmax
+            sm = edge_softmax(graph, e)
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-drop-softmax")
+            # with profiler.record_function("rf-drop-softmax"):
+            graph.edata['a'] = self.attn_drop(sm)
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-spmm")
+            # with profiler.record_function("rf-spmm"):
+            # message passing
+            graph.update_all(fn.u_mul_e('ft', 'a', 'm'),
+                             fn.sum('m', 'ft'))
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
             rst = graph.dstdata['ft']
-            # torch.cuda.nvtx.range_push("rf-residual")
-            with profiler.record_function("rf-residual"):
-                # residual
-                if self.res_fc is not None:
-                    # Use -1 rather than self._num_heads to handle broadcasting
-                    resval = self.res_fc(h_dst).view(*dst_prefix_shape, -1, self._out_feats)
-                    rst = rst + resval
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-bias")
-            with profiler.record_function("rf-bias"):
-                # bias
-                if self.bias is not None:
-                    rst = rst + self.bias.view(
-                        *((1,) * len(dst_prefix_shape)), self._num_heads, self._out_feats)
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
-            # torch.cuda.nvtx.range_push("rf-activation")
-            with profiler.record_function("rf-activation"):
-                # activation
-                if self.activation:
-                    rst = self.activation(rst)
-                torch.cuda.synchronize()
-            # torch.cuda.nvtx.range_pop()
+            torch.cuda.nvtx.range_push("rf-residual")
+            # with profiler.record_function("rf-residual"):
+            # residual
+            if self.res_fc is not None:
+                # Use -1 rather than self._num_heads to handle broadcasting
+                resval = self.res_fc(h_dst).view(*dst_prefix_shape, -1, self._out_feats)
+                rst = rst + resval
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-bias")
+            # with profiler.record_function("rf-bias"):
+            # bias
+            if self.bias is not None:
+                rst = rst + self.bias.view(
+                    *((1,) * len(dst_prefix_shape)), self._num_heads, self._out_feats)
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("rf-activation")
+            # with profiler.record_function("rf-activation"):
+            # activation
+            if self.activation:
+                rst = self.activation(rst)
+            # torch.cuda.synchronize()
+            torch.cuda.nvtx.range_pop()
 
             if get_attention:
                 return rst, graph.edata['a']

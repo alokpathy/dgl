@@ -50,11 +50,15 @@ class GAT(nn.Module):
         h = x
         for l, (layer, block) in enumerate(zip(self.gat_layers, blocks)):
             if l != len(self.gat_layers) - 1:
-                if epoch == 4 and step == 0:
+                if epoch == 1 and step == 0:
                     print(f"block: {block} h.size: {h.size()}")
-                    with profiler.profile(use_cuda=True) as prof:
-                        h = layer(block, h).flatten(1)
-                    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                    # with profiler.profile(use_cuda=True) as prof:
+                    torch.cuda.cudart().cudaProfilerStart()
+                    torch.cuda.nvtx.range_push("rf-totalrange")
+                    h = layer(block, h).flatten(1)
+                    torch.cuda.cudart().cudaProfilerStop()
+                    torch.cuda.nvtx.range_pop()
+                    # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
                 else:
                     h = layer(block, h).flatten(1)
             else:
