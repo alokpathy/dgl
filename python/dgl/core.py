@@ -9,6 +9,8 @@ from .frame import Frame
 from .udf import NodeBatch, EdgeBatch
 from . import ops
 
+import torch
+
 def is_builtin(func):
     """Return true if the function is a DGL builtin function."""
     return isinstance(func, fn.BuiltinFunction)
@@ -67,21 +69,38 @@ def invoke_edge_udf(graph, eid, etype, func, *, orig_eid=None):
     dict[str, Tensor]
         Results from running the UDF.
     """
+    torch.cuda.nvtx.range_push("nvtx-get-etype")
     etid = graph.get_etype_id(etype)
+    torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("nvtx-find-edge")
     stid, dtid = graph._graph.metagraph.find_edge(etid)
+    torch.cuda.nvtx.range_pop()
+
     if is_all(eid):
+        torch.cuda.nvtx.range_push("nvtx-all-edges")
         u, v, eid = graph.edges(form='all')
         edata = graph._edge_frames[etid]
+        torch.cuda.nvtx.range_pop()
     else:
+        torch.cuda.nvtx.range_push("nvtx-find-edges")
         u, v = graph.find_edges(eid)
         edata = graph._edge_frames[etid].subframe(eid)
+        torch.cuda.nvtx.range_pop()
     if len(u) == 0:
         dgl_warning('The input graph for the user-defined edge function ' \
                     'does not contain valid edges')
+
+    torch.cuda.nvtx.range_push("nvtx-subframe")
     srcdata = graph._node_frames[stid].subframe(u)
     dstdata = graph._node_frames[dtid].subframe(v)
+    torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("nvtx-edgebatch")
     ebatch = EdgeBatch(graph, eid if orig_eid is None else orig_eid,
                        etype, srcdata, edata, dstdata)
+    torch.cuda.nvtx.range_pop()
+
     return func(ebatch)
 
 def invoke_udf_reduce(graph, func, msgdata, *, orig_nid=None):
@@ -280,22 +299,34 @@ def message_passing(g, mfunc, rfunc, afunc):
     if (is_builtin(mfunc) and is_builtin(rfunc) and
             getattr(ops, '{}_{}'.format(mfunc.name, rfunc.name), None) is not None):
         # invoke fused message passing
+        torch.cuda.nvtx.range_push("nvtx-fused-gspmm")
         ndata = invoke_gspmm(g, mfunc, rfunc)
+        torch.cuda.nvtx.range_pop()
     else:
         # invoke message passing in two separate steps
         # message phase
         if is_builtin(mfunc):
+            torch.cuda.nvtx.range_push("nvtx-invoke-sddmm")
             msgdata = invoke_gsddmm(g, mfunc)
+            torch.cuda.nvtx.range_pop()
         else:
+            torch.cuda.nvtx.range_push("nvtx-edge-udf")
             orig_eid = g.edata.get(EID, None)
             msgdata = invoke_edge_udf(g, ALL, g.canonical_etypes[0], mfunc, orig_eid=orig_eid)
+            torch.cuda.nvtx.range_pop()
         # reduce phase
         if is_builtin(rfunc):
             msg = rfunc.msg_field
+            torch.cuda.nvtx.range_push("nvtx-invoke-gspmm")
             ndata = invoke_gspmm(g, fn.copy_e(msg, msg), rfunc, edata=msgdata)
+            torch.cuda.nvtx.range_pop()
         else:
             orig_nid = g.dstdata.get(NID, None)
+            torch.cuda.nvtx.range_push("nvtx-udf-reduce")
             ndata = invoke_udf_reduce(g, rfunc, msgdata, orig_nid=orig_nid)
+            torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("nvtx-apply")
     # apply phase
     if afunc is not None:
         for k, v in g.dstdata.items():   # include original node features
@@ -303,4 +334,5 @@ def message_passing(g, mfunc, rfunc, afunc):
                 ndata[k] = v
         orig_nid = g.dstdata.get(NID, None)
         ndata = invoke_node_udf(g, ALL, g.dsttypes[0], afunc, ndata=ndata, orig_nid=orig_nid)
+    torch.cuda.nvtx.range_pop()
     return ndata

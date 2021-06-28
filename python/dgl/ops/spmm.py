@@ -6,6 +6,8 @@ from .. import backend as F
 
 __all__ = ['gspmm']
 
+import torch
+
 
 def gspmm(g, op, reduce_op, lhs_data, rhs_data):
     r""" Generalized Sparse Matrix Multiplication interface.
@@ -51,6 +53,7 @@ def gspmm(g, op, reduce_op, lhs_data, rhs_data):
         lhs_shape = F.shape(lhs_data)
         rhs_shape = F.shape(rhs_data)
         if len(lhs_shape) != len(rhs_shape):
+            torch.cuda.nvtx.range_push("nvtx-expand-dims")
             max_ndims = max(len(lhs_shape), len(rhs_shape))
             lhs_pad_ndims = max_ndims - len(lhs_shape)
             rhs_pad_ndims = max_ndims - len(rhs_shape)
@@ -58,10 +61,13 @@ def gspmm(g, op, reduce_op, lhs_data, rhs_data):
             new_rhs_shape = (rhs_shape[0],) + (1,) * rhs_pad_ndims + rhs_shape[1:]
             lhs_data = F.reshape(lhs_data, new_lhs_shape)
             rhs_data = F.reshape(rhs_data, new_rhs_shape)
+            torch.cuda.nvtx.range_pop()
     # With max and min reducers infinity will be returned for zero degree nodes
+    torch.cuda.nvtx.range_push("nvtx-gspmm-internal")
     ret = gspmm_internal(g._graph, op,
                          'sum' if reduce_op == 'mean' else reduce_op,
                          lhs_data, rhs_data)
+    torch.cuda.nvtx.range_pop()
     # Replace infinity with zero for isolated nodes when reducer is min/max
     if reduce_op in ['min', 'max']:
         ret = F.replace_inf_with_zero(ret)

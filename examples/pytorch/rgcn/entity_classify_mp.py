@@ -26,6 +26,7 @@ from dgl.nn import RelGraphConv
 import tqdm
 
 from ogb.nodeproppred import DglNodePropPredDataset
+import torch.autograd.profiler as profiler
 
 class EntityClassify(nn.Module):
     """ Entity classification class for RGCN
@@ -105,14 +106,30 @@ class EntityClassify(nn.Module):
             self_loop=self.use_self_loop,
             low_mem=self.low_mem, layer_norm = layer_norm))
 
-    def forward(self, blocks, feats, norm=None):
+    def forward(self, blocks, feats, norm=None, epoch=0, step=0):
         if blocks is None:
             # full graph training
             blocks = [self.g] * len(self.layers)
         h = feats
         for layer, block in zip(self.layers, blocks):
-            block = block.to(self.device)
-            h = layer(block, h, block.edata['etype'], block.edata['norm'])
+            if epoch == 0 and step == 5:
+                print(f"block: {block} h.size: {h.size()}")
+                # with profiler.profile(use_cuda=True) as prof:
+                #     with profiler.record_function("rf-blockcopy"):
+                th.cuda.profiler.cudart().cudaProfilerStart()
+                th.cuda.nvtx.range_push("nvtx-blockcopy")
+                block = block.to(self.device)
+                th.cuda.nvtx.range_pop()
+                #     with profiler.record_function("rf-layer"):
+                th.cuda.nvtx.range_push("nvtx-layer")
+                h = layer(block, h, block.edata['etype'], block.edata['norm'])
+                th.cuda.nvtx.range_pop()
+                th.cuda.profiler.cudart().cudaProfilerStop()
+                # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                exit() 
+            else:
+                block = block.to(self.device)
+                h = layer(block, h, block.edata['etype'], block.edata['norm'])
         return h
 
 def gen_norm(g):
@@ -198,6 +215,7 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
     dev_id = devices[proc_id] if devices[proc_id] != 'cpu' else -1
     g, node_feats, num_of_ntype, num_classes, num_rels, target_idx, \
         train_idx, val_idx, test_idx, labels = dataset
+    print(g)
     if split is not None:
         train_seed, val_seed, test_seed = split
         train_idx = train_idx[train_seed]
@@ -337,7 +355,8 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
                                 blocks[0].srcdata['ntype'],
                                 blocks[0].srcdata['type_id'],
                                 node_feats)
-            logits = model(blocks, feats)
+            # logits = model(blocks, feats)
+            logits = model(blocks, feats, epoch=epoch, step=i)
             loss = F.cross_entropy(logits, labels[seeds])
             t1 = time.time()
             optimizer.zero_grad()
@@ -499,6 +518,7 @@ def main(args, devices):
         else:
             val_idx = train_idx
 
+    print(f"num_rels: {num_rels}")
     node_feats = []
     for ntype in hg.ntypes:
         if len(hg.nodes[ntype].data) == 0 or args.node_feats is False:

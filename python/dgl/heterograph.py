@@ -18,6 +18,8 @@ from . import backend as F
 from .frame import Frame
 from .view import HeteroNodeView, HeteroNodeDataView, HeteroEdgeView, HeteroEdgeDataView
 
+import torch
+
 __all__ = ['DGLHeteroGraph', 'combine_names']
 
 class DGLHeteroGraph(object):
@@ -4695,12 +4697,26 @@ class DGLHeteroGraph(object):
                 [0.],
                 [3.]])
         """
+        torch.cuda.nvtx.range_push("nvtx-getetype")
         etid = self.get_etype_id(etype)
+        torch.cuda.nvtx.range_pop()
+
+        torch.cuda.nvtx.range_push("nvtx-canonical-etypes")
         etype = self.canonical_etypes[etid]
+        torch.cuda.nvtx.range_pop()
+
+        torch.cuda.nvtx.range_push("nvtx-find-edge")
         _, dtid = self._graph.metagraph.find_edge(etid)
         g = self if etype is None else self[etype]
+        torch.cuda.nvtx.range_pop()
+
+        torch.cuda.nvtx.range_push("nvtx-core-mp")
         ndata = core.message_passing(g, message_func, reduce_func, apply_node_func)
+        torch.cuda.nvtx.range_pop()
+
+        torch.cuda.nvtx.range_push("nvtx-nrepr")
         self._set_n_repr(dtid, ALL, ndata)
+        torch.cuda.nvtx.range_pop()
 
     #################################################################
     # Message passing on heterograph

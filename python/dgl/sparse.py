@@ -6,6 +6,7 @@ from ._ffi.function import _init_api
 from .base import DGLError
 from . import backend as F
 
+import torch
 
 def infer_broadcast_shape(op, shp1, shp2):
     r"""Check the shape validity, and infer the output shape given input shape and operator.
@@ -124,6 +125,7 @@ def _gspmm(gidx, op, reduce_op, u, e):
             raise DGLError("The node features' data type {} doesn't match edge"
                            " features' data type {}, please convert them to the"
                            " same type.".format(F.dtype(u), F.dtype(e)))
+    torch.cuda.nvtx.range_push("nvtx-_gspmm-preproc")
     # deal with scalar features.
     expand_u, expand_e = False, False
     if use_u:
@@ -139,7 +141,9 @@ def _gspmm(gidx, op, reduce_op, u, e):
     dtype = F.dtype(u) if use_u else F.dtype(e)
     u_shp = F.shape(u) if use_u else (0,)
     e_shp = F.shape(e) if use_e else (0,)
+    torch.cuda.nvtx.range_push("nvtx-_gspmm-find-edge")
     _, dsttype = gidx.metagraph.find_edge(0)
+    torch.cuda.nvtx.range_pop()
     v_shp = (gidx.number_of_nodes(dsttype), ) +\
         infer_broadcast_shape(op, u_shp[1:], e_shp[1:])
     v = F.zeros(v_shp, dtype, ctx)
@@ -153,6 +157,8 @@ def _gspmm(gidx, op, reduce_op, u, e):
             arg_e = F.zeros(v_shp, idtype, ctx)
     arg_u_nd = to_dgl_nd_for_write(arg_u)
     arg_e_nd = to_dgl_nd_for_write(arg_e)
+    torch.cuda.nvtx.range_pop()
+    torch.cuda.nvtx.range_push("nvtx-_gspmm-CAPI-KERNEL")
     if gidx.number_of_edges(0) > 0:
         _CAPI_DGLKernelSpMM(gidx, op, reduce_op,
                             to_dgl_nd(u if use_u else None),
@@ -160,6 +166,7 @@ def _gspmm(gidx, op, reduce_op, u, e):
                             to_dgl_nd_for_write(v),
                             arg_u_nd,
                             arg_e_nd)
+    torch.cuda.nvtx.range_pop()
     # NOTE(zihao): actually we can avoid the following step, because arg_*_nd
     # refers to the data that stores arg_*. After we call _CAPI_DGLKernelSpMM,
     # arg_* should have already been changed. But we found this doesn't work

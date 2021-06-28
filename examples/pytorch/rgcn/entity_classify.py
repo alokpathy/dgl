@@ -90,6 +90,8 @@ def main(args):
             category_id = i
 
     g = dgl.to_homogeneous(hg, edata=['norm'])
+    print(g)
+    print(f"num_rels: {num_rels}")
     num_nodes = g.number_of_nodes()
     node_ids = torch.arange(num_nodes)
     edge_norm = g.edata['norm']
@@ -138,7 +140,8 @@ def main(args):
     for epoch in range(args.n_epochs):
         optimizer.zero_grad()
         t0 = time.time()
-        logits = model(g, feats, edge_type, edge_norm)
+        # logits = model(g, feats, edge_type, edge_norm)
+        logits = model(g, feats, edge_type, edge_norm, epoch=epoch)
         logits = logits[target_idx]
         loss = F.cross_entropy(logits[train_idx], labels[train_idx])
         t1 = time.time()

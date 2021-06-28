@@ -1,0 +1,85 @@
+WARNING: Backtraces will not be collected because sampling is disabled.
+
+**** collection configuration ****
+	output_filename = /home/ubuntu/dgl/examples/pytorch/rgcn/rgcn_am_gpu_lowmem_nsight
+	force-overwrite = true
+	stop-on-exit = true
+	export_sqlite = false
+	stats = false
+	capture-range = none
+	stop-on-range-end = false
+	Beta: ftrace events:
+	ftrace-keep-user-config = false
+	trace-GPU-context-switch = false
+	delay = 0 seconds
+	duration = 0 seconds
+	kill = signal number 15
+	inherit-environment = true
+	show-output = true
+	trace-fork-before-exec = false
+	sample_cpu = false
+	backtrace_method = LBR
+	wait = all
+	trace_cublas = true
+	trace_cuda = true
+	trace_cudnn = true
+	trace_nvtx = true
+	trace_mpi = false
+	trace_openacc = false
+	trace_vulkan = false
+	trace_opengl = false
+	trace_osrt = true
+	osrt-threshold = 0 nanoseconds
+	cudabacktrace = false
+	cudabacktrace-threshold = 0 nanoseconds
+	profile_processes = tree
+	application command = python
+	application arguments = entity_classify_mp.py -d am --testing --lr 0.01 --num-worker 1 --gpu 0 --dropout 0.7 --n-bases 2 --n-epochs 2 --low-mem 
+	application working directory = /home/ubuntu/dgl/examples/pytorch/rgcn
+	NVTX profiler range trigger = 
+	NVTX profiler domain trigger = 
+	environment variables:
+	Collecting data...
+Namespace(batch_size=100, dataset='am', dgl_sparse=False, dropout=0.7, eval_batch_size=32, fanout='4, 4', gpu='0', l2norm=0, layer_norm=False, low_mem=True, lr=0.01, n_bases=2, n_epochs=2, n_hidden=16, n_layers=2, node_feats=False, num_workers=1, sparse_lr=0.02, use_self_loop=False, validation=False)
+Done loading data from cached files.
+0:TYPE
+1:_BNode
+2:aggregation
+3:p
+4:physical
+5:proxy
+6:t
+Graph(num_nodes=881680, num_edges=5668682,
+      ndata_schemes={'_ID': Scheme(shape=(), dtype=torch.int64), '_TYPE': Scheme(shape=(), dtype=torch.int64), 'ntype': Scheme(shape=(), dtype=torch.int64), 'type_id': Scheme(shape=(), dtype=torch.int64)}
+      edata_schemes={'_ID': Scheme(shape=(), dtype=torch.int64), '_TYPE': Scheme(shape=(), dtype=torch.int64), 'etype': Scheme(shape=(), dtype=torch.int64)})
+start training...
+Using backend: pytorch
+Train Accuracy: 0.1000 | Train Loss: 2.3927
+Train Accuracy: 0.2100 | Train Loss: 2.3864
+Train Accuracy: 0.3600 | Train Loss: 2.3779
+Train Accuracy: 0.2800 | Train Loss: 2.3739
+Train Accuracy: 0.3600 | Train Loss: 2.3706
+Train Accuracy: 0.3200 | Train Loss: 2.3645
+Train Accuracy: 0.3400 | Train Loss: 2.3559
+Train Accuracy: 0.5000 | Train Loss: 2.3474
+Epoch 00000:00002 | Train Forward Time(s) 0.0082 | Backward Time(s) 0.0093
+block: Block(num_src_nodes=1120, num_dst_nodes=427, num_edges=1505) h.size: torch.Size([1120, 16])
+	Generating the /home/ubuntu/dgl/examples/pytorch/rgcn/rgcn_am_gpu_lowmem_nsight.qdstrm file.
+	Capturing raw events...
+	44290 total events collected.
+	Saving diagnostics...
+	Saving qdstrm file to disk...
+	Finished saving file.
+
+
+Importing the qdstrm file using /usr/local/cuda-10.2/nsight-systems-2019.5.2/host-linux-x64/QdstrmImporter.
+
+Importing...
+
+Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [0%                                                  ]Importing [==5%                                                ]Importing [==5%                                                ]Importing [=====11%                                             ]Importing [========16%                                          ]Importing [==========21%                                        ]Importing [=============26%                                     ]Importing [===============31%                                   ]Importing [=================35%                                 ]Importing [====================40%                              ]Importing [======================44%                            ]Importing [========================48%                          ]Importing [==========================52%                        ]Importing [============================57%                      ]Importing [===============================62%                   ]Importing [=================================67%                 ]Importing [====================================72%              ]Importing [======================================77%            ]Importing [========================================81%          ]Importing [===========================================86%       ]Importing [=============================================91%     ]Importing [==============================================93%    ]Importing [===============================================95%   ]Importing [===============================================95%   ]Importing [===============================================95%   ]Importing [==================================================100%]
+Saving report to file "/home/ubuntu/dgl/examples/pytorch/rgcn/rgcn_am_gpu_lowmem_nsight.qdrep"
+Report file saved.
+Please discard the qdstrm file and use the qdrep file instead.
+
+Removed /home/ubuntu/dgl/examples/pytorch/rgcn/rgcn_am_gpu_lowmem_nsight.qdstrm as it was successfully imported.
+Please use the qdrep file instead.

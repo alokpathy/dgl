@@ -10,6 +10,8 @@ from .. import utils
 from ....base import DGLError
 from .... import edge_subgraph
 
+import torch.autograd.profiler as profiler
+
 class RelGraphConv(nn.Module):
     r"""Relational graph convolution layer.
 
@@ -200,6 +202,7 @@ class RelGraphConv(nn.Module):
                   This requires the input graph to store edges sorted by their type IDs.
                   Preferred format if ``lowmem == True``.
         """
+        th.cuda.nvtx.range_push("nvtx-basis-mult")
         if self.num_bases < self.num_rels:
             # generate all weights from bases
             weight = self.weight.view(self.num_bases,
@@ -208,6 +211,7 @@ class RelGraphConv(nn.Module):
                 self.num_rels, self.in_feat, self.out_feat)
         else:
             weight = self.weight
+        th.cuda.nvtx.range_pop()
 
         h = edges.src['h']
         device = h.device
@@ -225,20 +229,32 @@ class RelGraphConv(nn.Module):
             # A more memory-friendly implementation.
             # Calculate msg @ W_r before put msg into edge.
             assert isinstance(etypes, list)
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls")
             h_t = th.split(h, etypes)
             msg = []
             for etype in range(self.num_rels):
                 if h_t[etype].shape[0] == 0:
                     continue
+                # print(f"etype: {etype} h_t.size: {h_t[etype].size()} weight.size: {weight[etype].size()}")
+                th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
                 msg.append(th.matmul(h_t[etype], weight[etype]))
+                th.cuda.nvtx.range_pop()
             msg = th.cat(msg)
+            th.cuda.nvtx.range_pop()
+            # print(f"msg.size: {msg.size()}")
         else:
             # Use batched matmult
+            th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
             if isinstance(etypes, list):
                 etypes = th.repeat_interleave(th.arange(len(etypes), device=device),
                                               th.tensor(etypes, device=device))
+            th.cuda.nvtx.range_push("nvtx-index-select")
             weight = weight.index_select(0, etypes)
+            th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
             msg = th.bmm(h.unsqueeze(1), weight).squeeze(1)
+            th.cuda.nvtx.range_pop()
+            # print(f"etypes.size: {etypes.size()} h.size: {h.unsqueeze(1).size()} weight.size: {weight.size()} msg.size: {msg.size()}")
 
         if 'norm' in edges.data:
             msg = msg * edges.data['norm']
@@ -341,36 +357,70 @@ class RelGraphConv(nn.Module):
                 # change the node IDs). It then converts the etypes tensor to an integer
                 # list, where each element is the number of edges of the type.
                 # Sort the graph based on the etypes
+                th.cuda.nvtx.range_push("nvtx-sort-edges")
                 sorted_etypes, index = th.sort(etypes)
+                th.cuda.nvtx.range_pop()
+
+                th.cuda.nvtx.range_push("nvtx-new-subgraph")
                 g = edge_subgraph(g, index, preserve_nodes=True)
+                th.cuda.nvtx.range_pop()
+
+                th.cuda.nvtx.range_push("nvtx-etypes-list")
                 # Create a new etypes to be an integer list of number of edges.
                 pos = _searchsorted(sorted_etypes, th.arange(self.num_rels, device=g.device))
                 num = th.tensor([len(etypes)], device=g.device)
                 etypes = (th.cat([pos[1:], num]) - pos).tolist()
                 if norm is not None:
                     norm = norm[index]
+                th.cuda.nvtx.range_pop()
 
         with g.local_scope():
+            th.cuda.nvtx.range_push("nvtx-store-feat")
             g.srcdata['h'] = feat
+            th.cuda.nvtx.range_pop()
+
             if norm is not None:
+                th.cuda.nvtx.range_push("nvtx-store-norm")
                 g.edata['norm'] = norm
+                th.cuda.nvtx.range_pop()
             if self.self_loop:
+                th.cuda.nvtx.range_push("nvtx-select-loop")
                 loop_message = utils.matmul_maybe_select(feat[:g.number_of_dst_nodes()],
                                                          self.loop_weight)
+                th.cuda.nvtx.range_pop()
+
+            # with profiler.record_function("rf-spmm"):
+            th.cuda.nvtx.range_push("nvtx-message-passing")
             # message passing
             g.update_all(functools.partial(self.message_func, etypes=etypes),
-                         fn.sum(msg='msg', out='h'))
+                     fn.sum(msg='msg', out='h'))
+            th.cuda.nvtx.range_pop()
             # apply bias and activation
             node_repr = g.dstdata['h']
             if self.layer_norm:
+                # with profiler.record_function("rf-norm"):
+                th.cuda.nvtx.range_push("nvtx-norm")
                 node_repr = self.layer_norm_weight(node_repr)
+                th.cuda.nvtx.range_pop()
             if self.bias:
+                # with profiler.record_function("rf-bias"):
+                th.cuda.nvtx.range_push("nvtx-bias")
                 node_repr = node_repr + self.h_bias
+                th.cuda.nvtx.range_pop()
             if self.self_loop:
+                # with profiler.record_function("rf-selfloop"):
+                th.cuda.nvtx.range_push("nvtx-selfloop")
                 node_repr = node_repr + loop_message
+                th.cuda.nvtx.range_pop()
             if self.activation:
+                # with profiler.record_function("rf-activation"):
+                th.cuda.nvtx.range_push("nvtx-activation")
                 node_repr = self.activation(node_repr)
+                th.cuda.nvtx.range_pop()
+            # with profiler.record_function("rf-dropout"):
+            th.cuda.nvtx.range_push("nvtx-dropout")
             node_repr = self.dropout(node_repr)
+            th.cuda.nvtx.range_pop()
             return node_repr
 
 _TORCH_HAS_SEARCHSORTED = getattr(th, 'searchsorted', None)

@@ -56,54 +56,93 @@ class HGTLayer(nn.Module):
     def forward(self, G, h):
         with G.local_scope():
             node_dict, edge_dict = self.node_dict, self.edge_dict
+            torch.cuda.nvtx.range_push("nvtx-attn-iters")
+            iter_count = 0
             for srctype, etype, dsttype in G.canonical_etypes:
-                sub_graph = G[srctype, etype, dsttype]
+                torch.cuda.nvtx.range_push("nvtx-attn-iters{}".format(iter_count))
 
+                torch.cuda.nvtx.range_push("nvtx-subgraph")
+                sub_graph = G[srctype, etype, dsttype]
+                torch.cuda.nvtx.range_pop()
+
+                torch.cuda.nvtx.range_push("nvtx-getlinear-params")
                 k_linear = self.k_linears[node_dict[srctype]]
                 v_linear = self.v_linears[node_dict[srctype]]
                 q_linear = self.q_linears[node_dict[dsttype]]
+                torch.cuda.nvtx.range_pop()
 
+                torch.cuda.nvtx.range_push("nvtx-multiply-linears")
                 k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                 v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                 q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
+                torch.cuda.nvtx.range_pop()
 
+                torch.cuda.nvtx.range_push("nvtx-getrelation-params")
                 e_id = self.edge_dict[etype]
 
                 relation_att = self.relation_att[e_id]
                 relation_pri = self.relation_pri[e_id]
                 relation_msg = self.relation_msg[e_id]
+                torch.cuda.nvtx.range_pop()
 
+                torch.cuda.nvtx.range_push("nvtx-einsum")
                 k = torch.einsum("bij,ijk->bik", k, relation_att)
                 v = torch.einsum("bij,ijk->bik", v, relation_msg)
+                torch.cuda.nvtx.range_pop()
 
+                torch.cuda.nvtx.range_push("nvtx-storedata")
                 sub_graph.srcdata['k'] = k
                 sub_graph.dstdata['q'] = q
                 sub_graph.srcdata['v_%d' % e_id] = v
+                torch.cuda.nvtx.range_pop()
 
+                torch.cuda.nvtx.range_push("nvtx-apply-edges")
                 sub_graph.apply_edges(fn.v_dot_u('q', 'k', 't'))
+                torch.cuda.nvtx.range_pop()
+
+                torch.cuda.nvtx.range_push("nvtx-compute-attnscore")
                 attn_score = sub_graph.edata.pop('t').sum(-1) * relation_pri / self.sqrt_dk
                 attn_score = edge_softmax(sub_graph, attn_score, norm_by='dst')
+                torch.cuda.nvtx.range_pop()
 
+                torch.cuda.nvtx.range_push("nvtx-store-attnscore")
                 sub_graph.edata['t'] = attn_score.unsqueeze(-1)
+                torch.cuda.nvtx.range_pop()
 
+                iter_count += 1
+                torch.cuda.nvtx.range_pop()
+            torch.cuda.nvtx.range_pop()
+
+            torch.cuda.nvtx.range_push("nvtx-multi-update-all")
             G.multi_update_all({etype : (fn.u_mul_e('v_%d' % e_id, 't', 'm'), fn.sum('m', 't')) \
                                 for etype, e_id in edge_dict.items()}, cross_reducer = 'mean')
+            torch.cuda.nvtx.range_pop()
 
+            torch.cuda.nvtx.range_push("nvtx-ts-aggr")
+            iter_count = 0
             new_h = {}
             for ntype in G.ntypes:
                 '''
                     Step 3: Target-specific Aggregation
                     x = norm( W[node_type] * gelu( Agg(x) ) + x )
                 '''
+                torch.cuda.nvtx.range_push("nvtx-ts-aggr{}".format(iter_count))
+                torch.cuda.nvtx.range_push("nvtx-ts-aggr-drop-linear")
                 n_id = node_dict[ntype]
                 alpha = torch.sigmoid(self.skip[n_id])
                 t = G.nodes[ntype].data['t'].view(-1, self.out_dim)
                 trans_out = self.drop(self.a_linears[n_id](t))
                 trans_out = trans_out * alpha + h[ntype] * (1-alpha)
+                torch.cuda.nvtx.range_pop()
+                torch.cuda.nvtx.range_push("nvtx-ts-aggr-norm")
                 if self.use_norm:
                     new_h[ntype] = self.norms[n_id](trans_out)
                 else:
                     new_h[ntype] = trans_out
+                torch.cuda.nvtx.range_pop()
+                torch.cuda.nvtx.range_pop()
+                iter_count += 1
+            torch.cuda.nvtx.range_pop()
             return new_h
 
 class HGT(nn.Module):
@@ -123,13 +162,23 @@ class HGT(nn.Module):
             self.gcs.append(HGTLayer(n_hid, n_hid, node_dict, edge_dict, n_heads, use_norm = use_norm))
         self.out = nn.Linear(n_hid, n_out)
 
-    def forward(self, G, out_key):
+    def forward(self, G, out_key, epoch=0):
         h = {}
         for ntype in G.ntypes:
             n_id = self.node_dict[ntype]
             h[ntype] = F.gelu(self.adapt_ws[n_id](G.nodes[ntype].data['inp']))
         for i in range(self.n_layers):
-            h = self.gcs[i](G, h)
+            if epoch == 2:
+                torch.cuda.profiler.cudart().cudaProfilerStart()
+                torch.cuda.nvtx.range_push("nvtx-layer")
+                h = self.gcs[i](G, h)
+                torch.cuda.nvtx.range_pop()
+                torch.cuda.profiler.cudart().cudaProfilerStop()
+                exit()
+            else:
+                print(f"layer {i} epoch {epoch} before")
+                h = self.gcs[i](G, h)
+                print(f"layer {i} epoch {epoch} after")
         return self.out(h[out_key])
 
 class HeteroRGCNLayer(nn.Module):
