@@ -174,7 +174,7 @@ class HeteroGraphConv(nn.Module):
                     continue
                 if stype not in src_inputs or dtype not in dst_inputs:
                     continue
-                print(f"rel_id: {rel_id} graph: {rel_graph} inputs; {src_inputs[stype].size()}")
+                # print(f"rel_id: {rel_id} graph: {rel_graph} inputs; {src_inputs[stype].size()}")
                 dstdata = self.mods[etype](
                     rel_graph,
                     (src_inputs[stype], dst_inputs[dtype]),

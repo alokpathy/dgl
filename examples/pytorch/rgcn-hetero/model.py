@@ -202,7 +202,7 @@ class EntityClassify(nn.Module):
             self.num_bases, activation=None,
             self_loop=self.use_self_loop))
 
-    def forward(self, epoch, step, h=None, blocks=None):
+    def forward(self, h=None, blocks=None, epoch=0, step=0):
         if h is None:
             # full graph training
             h = self.embed_layer()
@@ -214,6 +214,7 @@ class EntityClassify(nn.Module):
             # minibatch training
             layer_count = 0
             for layer, block in zip(self.layers, blocks):
+                print(f"len(block.ntypes): {len(block.ntypes)}")
                 if layer_count == 0 and epoch == 0 and step == 5:
                     th.cuda.cudart().cudaProfilerStart()
                     th.cuda.nvtx.range_push("rf-totalrange")

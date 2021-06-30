@@ -441,7 +441,7 @@ class GraphConv(nn.Module):
                 th.cuda.synchronize()
                 th.cuda.nvtx.range_pop()
 
-                print(f"spmm_time: {time.time() - spmm_start}")
+                # print(f"spmm_time: {time.time() - spmm_start}")
                 rst = graph.dstdata['h']
                 if weight is not None:
                     # with profiler.record_function("rf-FC-type{}".format(rel_id)):

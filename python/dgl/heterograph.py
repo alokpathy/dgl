@@ -4798,7 +4798,7 @@ class DGLHeteroGraph(object):
         merge_order = defaultdict(list)
         for etype, args in etype_dict.items():
             etid = self.get_etype_id(etype)
-            _, dtid = self._graph.metagraph.find_edge(etid)
+            stid, dtid = self._graph.metagraph.find_edge(etid)
             args = pad_tuple(args, 3)
             if args is None:
                 raise DGLError('Invalid arguments for edge type "{}". Should be '
@@ -4809,8 +4809,8 @@ class DGLHeteroGraph(object):
             merge_order[dtid].append(etid)  # use edge type id as merge order hint
         for dtid, frames in all_out.items():
             # merge by cross_reducer
-            self._node_frames[dtid].update(
-                reduce_dict_data(frames, cross_reducer, merge_order[dtid]))
+            dict_data = reduce_dict_data(frames, cross_reducer, merge_order[dtid])
+            self._node_frames[dtid].update(dict_data)
             # apply
             if apply_node_func is not None:
                 self.apply_nodes(apply_node_func, ALL, self.ntypes[dtid])

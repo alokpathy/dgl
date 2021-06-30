@@ -176,9 +176,7 @@ class HGT(nn.Module):
                 torch.cuda.profiler.cudart().cudaProfilerStop()
                 exit()
             else:
-                print(f"layer {i} epoch {epoch} before")
                 h = self.gcs[i](G, h)
-                print(f"layer {i} epoch {epoch} after")
         return self.out(h[out_key])
 
 class HeteroRGCNLayer(nn.Module):

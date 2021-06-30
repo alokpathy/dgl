@@ -12,8 +12,10 @@ import time
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
+import dgl.function as fn
 import dgl.multiprocessing as mp
 from dgl.multiprocessing import Queue
+from dgl.nn.functional import edge_softmax
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 import dgl
@@ -96,9 +98,12 @@ class HGTLayer(nn.Module):
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-multiply-linears")
-                k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
-                v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
-                q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
+                # k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
+                # v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
+                k = k_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
+                v = v_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
+                # q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
+                q = q_linear(h["dst"][dsttype]).view(-1, self.n_heads, self.d_k)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-getrelation-params")
@@ -145,7 +150,8 @@ class HGTLayer(nn.Module):
             th.cuda.nvtx.range_push("nvtx-ts-aggr")
             iter_count = 0
             new_h = {}
-            for ntype in G.ntypes:
+            # for ntype in G.ntypes:
+            for ntype in G.dsttypes:
                 '''
                     Step 3: Target-specific Aggregation
                     x = norm( W[node_type] * gelu( Agg(x) ) + x )
@@ -154,9 +160,11 @@ class HGTLayer(nn.Module):
                 th.cuda.nvtx.range_push("nvtx-ts-aggr-drop-linear")
                 n_id = node_dict[ntype]
                 alpha = th.sigmoid(self.skip[n_id])
-                t = G.nodes[ntype].data['t'].view(-1, self.out_dim)
+                # t = G.nodes[ntype].data['t'].view(-1, self.out_dim)
+                t = G.dstnodes[ntype].data['t'].view(-1, self.out_dim)
                 trans_out = self.drop(self.a_linears[n_id](t))
-                trans_out = trans_out * alpha + h[ntype] * (1-alpha)
+                # trans_out = trans_out * alpha + h[ntype] * (1-alpha)
+                trans_out = trans_out * alpha + h["dst"][ntype] * (1-alpha)
                 th.cuda.nvtx.range_pop()
                 th.cuda.nvtx.range_push("nvtx-ts-aggr-norm")
                 if self.use_norm:
@@ -186,16 +194,23 @@ class HGT(nn.Module):
             self.gcs.append(HGTLayer(n_hid, n_hid, node_dict, edge_dict, n_heads, use_norm = use_norm))
         self.out = nn.Linear(n_hid, n_out)
 
-    def forward(self, blocks, out_key, epoch=0):
+    def forward(self, blocks, out_key, epoch=0, step=0):
         device = th.device("cuda:0")
         for i in range(self.n_layers):
             h = {}
+            h["src"] = {}
+            h["dst"] = {}
             G = blocks[i]
             G = G.to(device)
             for ntype in G.ntypes:
                 n_id = self.node_dict[ntype]
-                h[ntype] = F.gelu(self.adapt_ws[n_id](G.nodes[ntype].data['inp']))
-            if epoch == 2:
+                # nsrcnode_dict = {ntype : G.number_of_src_nodes(ntype) for ntype in G.srctypes}
+                # ndstnode_dict = {ntype : G.number_of_dst_nodes(ntype) for ntype in G.dsttypes}
+                # h[ntype] = F.gelu(self.adapt_ws[n_id](G.nodes[ntype].data['inp']))
+                h["src"][ntype] = F.gelu(self.adapt_ws[n_id](G.srcnodes[ntype].data['inp']))
+                h["dst"][ntype] = F.gelu(self.adapt_ws[n_id](G.dstnodes[ntype].data['inp']))
+            if epoch == 0 and step == 5:
+                print(f"block: {G} len(G.ntypes): {len(G.ntypes)}")
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-layer")
                 h = self.gcs[i](G, h)
@@ -203,9 +218,7 @@ class HGT(nn.Module):
                 th.cuda.profiler.cudart().cudaProfilerStop()
                 exit()
             else:
-                print(f"layer {i} epoch {epoch} before")
                 h = self.gcs[i](G, h)
-                print(f"layer {i} epoch {epoch} after")
         return self.out(h[out_key])
 
 def gen_norm(g):
@@ -288,10 +301,13 @@ def evaluate(model, embed_layer, eval_loader, node_feats):
     return eval_logits, eval_seeds
 
 def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
+    #     run(0, n_gpus, n_cpus, args, devices,
+    #         (g, node_feats, num_of_ntype, num_classes, num_rels, target_idx,
+    #         train_idx, val_idx, test_idx, labels), None, None)
     dev_id = devices[proc_id] if devices[proc_id] != 'cpu' else -1
-    g, node_feats, num_of_ntype, num_classes, num_rels, target_idx, \
+    g, node_feats, num_of_ntype, num_classes, num_rels, category, \
         train_idx, val_idx, test_idx, labels = dataset
-    print(g)
+
     if split is not None:
         train_seed, val_seed, test_seed = split
         train_idx = train_idx[train_seed]
@@ -300,28 +316,25 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
 
     fanouts = [int(fanout) for fanout in args.fanout.split(',')]
     node_tids = g.ndata[dgl.NTYPE]
-    sampler = NeighborSampler(g, target_idx, fanouts)
-    loader = DataLoader(dataset=train_idx.numpy(),
-                        batch_size=args.batch_size,
-                        collate_fn=sampler.sample_blocks,
-                        shuffle=True,
-                        num_workers=args.num_workers)
+    sampler = dgl.dataloading.MultiLayerNeighborSampler([args.fanout] * args.n_layers)
+    loader = dgl.dataloading.NodeDataLoader(
+        g, {category: train_idx}, sampler,
+        batch_size=args.batch_size, shuffle=True, num_workers=0)
 
     # validation sampler
-    val_sampler = NeighborSampler(g, target_idx, fanouts)
-    val_loader = DataLoader(dataset=val_idx.numpy(),
-                            batch_size=args.batch_size,
-                            collate_fn=val_sampler.sample_blocks,
-                            shuffle=False,
-                            num_workers=args.num_workers)
+    # we do not use full neighbor to save computation resources
+    val_sampler = dgl.dataloading.MultiLayerNeighborSampler([args.fanout] * args.n_layers)
+    val_loader = dgl.dataloading.NodeDataLoader(
+        g, {category: val_idx}, val_sampler,
+        batch_size=args.batch_size, shuffle=True, num_workers=0)
 
-    # test sampler
-    test_sampler = NeighborSampler(g, target_idx, [None] * args.n_layers)
-    test_loader = DataLoader(dataset=test_idx.numpy(),
-                             batch_size=args.eval_batch_size,
-                             collate_fn=test_sampler.sample_blocks,
-                             shuffle=False,
-                             num_workers=args.num_workers)
+    # # test sampler
+    # test_sampler = NeighborSampler(g, target_idx, [None] * args.n_layers)
+    # test_loader = DataLoader(dataset=test_idx.numpy(),
+    #                          batch_size=args.eval_batch_size,
+    #                          collate_fn=test_sampler.sample_blocks,
+    #                          shuffle=False,
+    #                          num_workers=args.num_workers)
 
     world_size = n_gpus
     if n_gpus > 1:
@@ -418,30 +431,30 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
     do_test = False
     if n_gpus > 1 and n_cpus - args.num_workers > 0:
         th.set_num_threads(n_cpus-args.num_workers)
+    train_step = th.tensor(0)
     for epoch in range(args.n_epochs):
         tstart = time.time()
         model.train()
 
         for i, sample_data in enumerate(loader):
-            seeds, blocks = sample_data
+            input_nodes, seeds, blocks = sample_data
             t0 = time.time()
 
-            # logits = model(g, 'paper', epoch=epoch)
-            logits = model(blocks, 'paper', epoch=epoch)
+            seeds = seeds[category]     # we only predict the nodes with type "category"
+            lbl = labels[seeds]
+
+            t0 = time.time()
+            logits = model(blocks, 'paper', epoch=epoch, step=i)
+            # logits = model(blocks, 'paper')
+            t1 = time.time()
             # The loss is computed only for labeled nodes.
-            loss = F.cross_entropy(logits[train_idx], labels[train_idx].to(device))
+            # loss = F.cross_entropy(logits[train_idx], labels[train_idx].to(device))
+            loss = F.cross_entropy(logits, lbl)
             optimizer.zero_grad()
             loss.backward()
+            t2 = time.time()
             th.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
-            train_step += 1
-            scheduler.step(train_step)
-
-            loss.backward()
-            if emb_optimizer is not None:
-                emb_optimizer.step()
-            optimizer.step()
-            t2 = time.time()
 
             forward_time.append(t1 - t0)
             backward_time.append(t2 - t1)
@@ -449,6 +462,8 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
             if i % 100 and proc_id == 0:
                 print("Train Accuracy: {:.4f} | Train Loss: {:.4f}".
                     format(train_acc, loss.item()))
+        train_step += 1
+        scheduler.step(train_step)
         gc.collect()
         print("Epoch {:05d}:{:05d} | Train Forward Time(s) {:.4f} | Backward Time(s) {:.4f}".
             format(epoch, args.n_epochs, forward_time[-1], backward_time[-1]))
@@ -608,26 +623,42 @@ def main(args, devices):
             category_id = i
         print('{}:{}'.format(i, ntype))
 
-    g = dgl.to_homogeneous(hg)
-    g.ndata['ntype'] = g.ndata[dgl.NTYPE]
-    g.ndata['ntype'].share_memory_()
-    g.edata['etype'] = g.edata[dgl.ETYPE]
-    g.edata['etype'].share_memory_()
-    g.ndata['type_id'] = g.ndata[dgl.NID]
-    g.ndata['type_id'].share_memory_()
-    node_ids = th.arange(g.number_of_nodes())
+    g = hg
+    print(f"g: {g}")
+    print(f"g.ntypes: {g.ntypes}")
+    node_dict = {}
+    edge_dict = {}
+    for ntype in g.ntypes:
+        node_dict[ntype] = len(node_dict)
+    for etype in g.etypes:
+        edge_dict[etype] = len(edge_dict)
+        g.edges[etype].data['id'] = th.ones(g.number_of_edges(etype), dtype=th.long) * edge_dict[etype] 
 
-    # find out the target node ids
-    node_tids = g.ndata[dgl.NTYPE]
-    loc = (node_tids == category_id)
-    target_idx = node_ids[loc]
-    target_idx.share_memory_()
-    train_idx.share_memory_()
-    val_idx.share_memory_()
-    test_idx.share_memory_()
-    # Create csr/coo/csc formats before launching training processes with multi-gpu.
-    # This avoids creating certain formats in each sub-process, which saves momory and CPU.
-    g.create_formats_()
+    #     Random initialize input feature
+    for ntype in g.ntypes:
+        emb = nn.Parameter(th.Tensor(g.number_of_nodes(ntype), 256), requires_grad = False)
+        nn.init.xavier_uniform_(emb)
+        g.nodes[ntype].data['inp'] = emb
+    # g = dgl.to_homogeneous(hg)
+    # g.ndata['ntype'] = g.ndata[dgl.NTYPE]
+    # g.ndata['ntype'].share_memory_()
+    # g.edata['etype'] = g.edata[dgl.ETYPE]
+    # g.edata['etype'].share_memory_()
+    # g.ndata['type_id'] = g.ndata[dgl.NID]
+    # g.ndata['type_id'].share_memory_()
+    # node_ids = th.arange(g.number_of_nodes())
+
+    # # find out the target node ids
+    # node_tids = g.ndata[dgl.NTYPE]
+    # loc = (node_tids == category_id)
+    # target_idx = node_ids[loc]
+    # target_idx.share_memory_()
+    # train_idx.share_memory_()
+    # val_idx.share_memory_()
+    # test_idx.share_memory_()
+    # # Create csr/coo/csc formats before launching training processes with multi-gpu.
+    # # This avoids creating certain formats in each sub-process, which saves momory and CPU.
+    # g.create_formats_()
 
     n_gpus = len(devices)
     n_cpus = mp.cpu_count()
@@ -639,46 +670,10 @@ def main(args, devices):
     # gpu
     elif n_gpus == 1:
         run(0, n_gpus, n_cpus, args, devices,
-            (g, node_feats, num_of_ntype, num_classes, num_rels, target_idx,
+            (g, node_feats, num_of_ntype, num_classes, num_rels, category,
             train_idx, val_idx, test_idx, labels), None, None)
-    # multi gpu
     else:
-        queue = mp.Queue(n_gpus)
-        procs = []
-        num_train_seeds = train_idx.shape[0]
-        num_valid_seeds = val_idx.shape[0]
-        num_test_seeds = test_idx.shape[0]
-        train_seeds = th.randperm(num_train_seeds)
-        valid_seeds = th.randperm(num_valid_seeds)
-        test_seeds = th.randperm(num_test_seeds)
-        tseeds_per_proc = num_train_seeds // n_gpus
-        vseeds_per_proc = num_valid_seeds // n_gpus
-        tstseeds_per_proc = num_test_seeds // n_gpus
-        for proc_id in range(n_gpus):
-            # we have multi-gpu for training, evaluation and testing
-            # so split trian set, valid set and test set into num-of-gpu parts.
-            proc_train_seeds = train_seeds[proc_id * tseeds_per_proc :
-                                           (proc_id + 1) * tseeds_per_proc \
-                                           if (proc_id + 1) * tseeds_per_proc < num_train_seeds \
-                                           else num_train_seeds]
-            proc_valid_seeds = valid_seeds[proc_id * vseeds_per_proc :
-                                           (proc_id + 1) * vseeds_per_proc \
-                                           if (proc_id + 1) * vseeds_per_proc < num_valid_seeds \
-                                           else num_valid_seeds]
-            proc_test_seeds = test_seeds[proc_id * tstseeds_per_proc :
-                                         (proc_id + 1) * tstseeds_per_proc \
-                                         if (proc_id + 1) * tstseeds_per_proc < num_test_seeds \
-                                         else num_test_seeds]
-            p = mp.Process(target=run, args=(proc_id, n_gpus, n_cpus // n_gpus, args, devices,
-                                             (g, node_feats, num_of_ntype, num_classes, num_rels, target_idx,
-                                             train_idx, val_idx, test_idx, labels),
-                                             (proc_train_seeds, proc_valid_seeds, proc_test_seeds),
-                                             queue))
-            p.start()
-            procs.append(p)
-        for p in procs:
-            p.join()
-
+        print("no multi-gpu")
 
 def config():
     parser = argparse.ArgumentParser(description='RGCN')
@@ -702,7 +697,7 @@ def config():
             help="dataset to use")
     parser.add_argument("--l2norm", type=float, default=0,
             help="l2 norm coef")
-    parser.add_argument("--fanout", type=str, default="4, 4",
+    parser.add_argument("--fanout", type=str, default="4",
             help="Fan-out of neighbor sampling.")
     parser.add_argument("--use-self-loop", default=False, action='store_true',
             help="include self feature as a special relation")

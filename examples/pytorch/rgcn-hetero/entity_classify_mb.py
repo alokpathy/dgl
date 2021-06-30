@@ -50,6 +50,7 @@ def main(args):
         device = 'cuda:%d' % args.gpu
 
     # load graph data
+    ogb_dataset = False
     if args.dataset == 'aifb':
         dataset = AIFBDataset()
     elif args.dataset == 'mutag':
@@ -115,6 +116,7 @@ def main(args):
         embed_layer = embed_layer.to(device)
 
     node_embed = embed_layer()
+    print(f"len(g.ntypes): {len(g.ntypes)}")
     # create model
     model = EntityClassify(g,
                            args.n_hidden,
@@ -163,7 +165,7 @@ def main(args):
                 emb = {k : e.cuda() for k, e in emb.items()}
                 lbl = lbl.cuda()
             # logits = model(emb, blocks)[category]
-            logits = model(epoch, i, emb, blocks)[category]
+            logits = model(emb, blocks, epoch=epoch, step=i)[category]
             loss = F.cross_entropy(logits, lbl)
             loss.backward()
             optimizer.step()
