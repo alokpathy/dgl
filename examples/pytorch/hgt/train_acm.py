@@ -88,6 +88,8 @@ G = dgl.heterograph({
         ('subject', 'has', 'paper') : data['PvsL'].transpose().nonzero(),
     })
 print(G)
+print(G.num_edges())
+print(len(G.etypes))
 
 pvc = data['PvsC'].tocsr()
 p_selected = pvc.tocoo()

@@ -107,7 +107,8 @@ class HGTLayer(nn.Module):
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-getrelation-params")
-                e_id = self.edge_dict[etype]
+                # e_id = self.edge_dict[etype]
+                e_id = self.edge_dict[(srctype, etype, dsttype)]
 
                 relation_att = self.relation_att[e_id]
                 relation_pri = self.relation_pri[e_id]
@@ -209,7 +210,7 @@ class HGT(nn.Module):
                 # h[ntype] = F.gelu(self.adapt_ws[n_id](G.nodes[ntype].data['inp']))
                 h["src"][ntype] = F.gelu(self.adapt_ws[n_id](G.srcnodes[ntype].data['inp']))
                 h["dst"][ntype] = F.gelu(self.adapt_ws[n_id](G.dstnodes[ntype].data['inp']))
-            if epoch == 0 and step == 5:
+            if epoch == 0 and step == 3:
                 print(f"block: {G} len(G.ntypes): {len(G.ntypes)}")
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-layer")
@@ -358,7 +359,8 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
     edge_dict = {}
     for ntype in g.ntypes:
         node_dict[ntype] = len(node_dict)
-    for etype in g.etypes:
+    # for etype in g.etypes:
+    for etype in g.canonical_etypes:
         edge_dict[etype] = len(edge_dict)
         g.edges[etype].data['id'] = th.ones(g.number_of_edges(etype), dtype=th.long) * edge_dict[etype] 
 
@@ -444,7 +446,7 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
             lbl = labels[seeds]
 
             t0 = time.time()
-            logits = model(blocks, 'paper', epoch=epoch, step=i)
+            logits = model(blocks, category, epoch=epoch, step=i)
             # logits = model(blocks, 'paper')
             t1 = time.time()
             # The loss is computed only for labeled nodes.
@@ -552,6 +554,7 @@ def main(args, devices):
         dataset = BGSDataset()
     elif args.dataset == 'am':
         dataset = AMDataset()
+        category = "rev-productionPeriod"
     elif args.dataset == 'ogbn-mag':
         dataset = DglNodePropPredDataset(name=args.dataset)
         ogb_dataset = True
@@ -626,13 +629,16 @@ def main(args, devices):
     g = hg
     print(f"g: {g}")
     print(f"g.ntypes: {g.ntypes}")
+    print(f"g.etypes: {g.etypes}")
     node_dict = {}
     edge_dict = {}
     for ntype in g.ntypes:
         node_dict[ntype] = len(node_dict)
-    for etype in g.etypes:
+    # for i, etype in enumerate(g.etypes):
+    for i, etype in enumerate(g.canonical_etypes):
         edge_dict[etype] = len(edge_dict)
         g.edges[etype].data['id'] = th.ones(g.number_of_edges(etype), dtype=th.long) * edge_dict[etype] 
+        # g.edges[etype].data['id'] = th.ones(g[etype].number_of_edges(), dtype=th.long) * edge_dict[etype] 
 
     #     Random initialize input feature
     for ntype in g.ntypes:
@@ -687,8 +693,6 @@ def config():
             help="learning rate")
     parser.add_argument("--sparse-lr", type=float, default=2e-2,
             help="sparse embedding learning rate")
-    parser.add_argument("--n-bases", type=int, default=-1,
-            help="number of filter weight matrices, default: -1 [use all]")
     parser.add_argument("--n-layers", type=int, default=2,
             help="number of propagation rounds")
     parser.add_argument("-e", "--n-epochs", type=int, default=50,
