@@ -226,13 +226,25 @@ class EdgeSoftmax(th.autograd.Function):
         # remember to save the graph to backward cache before making it
         # a local variable
         if not is_all(eids):
+            th.cuda.nvtx.range_push("nvtx-edge-subgraph")
             gidx = gidx.edge_subgraph([eids], True).graph
+            th.cuda.nvtx.range_pop()
         if norm_by == 'src':
+            th.cuda.nvtx.range_push("nvtx-reverse")
             gidx = gidx.reverse()
+            th.cuda.nvtx.range_pop()
+        th.cuda.nvtx.range_push("nvtx-_gspmm-max")
         score_max = _gspmm(gidx, 'copy_rhs', 'max', None, score)[0]
+        th.cuda.nvtx.range_pop()
+        th.cuda.nvtx.range_push("nvtx-_gsddmm-sub")
         score = th.exp(_gsddmm(gidx, 'sub', score, score_max, 'e', 'v'))
+        th.cuda.nvtx.range_pop()
+        th.cuda.nvtx.range_push("nvtx-_gspmm-sum")
         score_sum = _gspmm(gidx, 'copy_rhs', 'sum', None, score)[0]
+        th.cuda.nvtx.range_pop()
+        th.cuda.nvtx.range_push("nvtx-_gsddmm-div")
         out = _gsddmm(gidx, 'div', score, score_sum, 'e', 'v')
+        th.cuda.nvtx.range_pop()
         ctx.backward_cache = gidx
         ctx.save_for_backward(out)
         return out

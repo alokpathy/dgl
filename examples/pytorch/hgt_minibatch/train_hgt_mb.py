@@ -32,6 +32,8 @@ import math
 from ogb.nodeproppred import DglNodePropPredDataset
 import torch.autograd.profiler as profiler
 
+th.manual_seed(0)
+
 class HGTLayer(nn.Module):
     def __init__(self,
                  in_dim,
@@ -79,69 +81,149 @@ class HGTLayer(nn.Module):
         nn.init.xavier_uniform_(self.relation_att)
         nn.init.xavier_uniform_(self.relation_msg)
 
-    def forward(self, G, h):
+    def forward(self, G, h, step=0):
         with G.local_scope():
             node_dict, edge_dict = self.node_dict, self.edge_dict
             th.cuda.nvtx.range_push("nvtx-attn-iters")
             iter_count = 0
+            outer_start = th.cuda.Event(enable_timing=True)
+            outer_end = th.cuda.Event(enable_timing=True)
+            start = th.cuda.Event(enable_timing=True)
+            end = th.cuda.Event(enable_timing=True)
+
+            subgraph_time = 0.0
+            getlinear_params_time = 0.0
+            multiply_linears_time = 0.0
+            getrelation_params_time = 0.0
+            einsum_time = 0.0
+            storedata_time = 0.0
+            apply_edges_time = 0.0
+            compute_attnscore_time = 0.0
+            edge_softmax_time = 0.0
+            store_attnscore_time = 0.0
+
+            # outer_start.record()
             for srctype, etype, dsttype in G.canonical_etypes:
+                if step == 3 and iter_count == 20:
+                    th.cuda.nvtx.range_pop()
+                    th.cuda.profiler.cudart().cudaProfilerStop()
+                    exit()
                 th.cuda.nvtx.range_push("nvtx-attn-iters{}".format(iter_count))
 
                 th.cuda.nvtx.range_push("nvtx-subgraph")
+                # start.record()
                 sub_graph = G[srctype, etype, dsttype]
+                # end.record()
+                # th.cuda.synchronize()
+                # subgraph_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-getlinear-params")
+                # start.record()
                 k_linear = self.k_linears[node_dict[srctype]]
                 v_linear = self.v_linears[node_dict[srctype]]
                 q_linear = self.q_linears[node_dict[dsttype]]
+                # end.record()
+                # th.cuda.synchronize()
+                # getlinear_params_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-multiply-linears")
+                # start.record()
                 # k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                 # v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                 k = k_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
                 v = v_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
                 # q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
                 q = q_linear(h["dst"][dsttype]).view(-1, self.n_heads, self.d_k)
+                # end.record()
+                # th.cuda.synchronize()
+                # multiply_linears_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-getrelation-params")
+                # start.record()
                 # e_id = self.edge_dict[etype]
                 e_id = self.edge_dict[(srctype, etype, dsttype)]
 
                 relation_att = self.relation_att[e_id]
                 relation_pri = self.relation_pri[e_id]
                 relation_msg = self.relation_msg[e_id]
+                # end.record()
+                # th.cuda.synchronize()
+                # getrelation_params_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-einsum")
+                # start.record()
                 k = th.einsum("bij,ijk->bik", k, relation_att)
                 v = th.einsum("bij,ijk->bik", v, relation_msg)
+                # end.record()
+                # th.cuda.synchronize()
+                # einsum_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-storedata")
+                # start.record()
                 sub_graph.srcdata['k'] = k
                 sub_graph.dstdata['q'] = q
                 sub_graph.srcdata['v_%d' % e_id] = v
+                # end.record()
+                # th.cuda.synchronize()
+                # storedata_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-apply-edges")
+                # start.record()
                 sub_graph.apply_edges(fn.v_dot_u('q', 'k', 't'))
+                # end.record()
+                # th.cuda.synchronize()
+                # apply_edges_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-compute-attnscore")
+                # start.record()
                 attn_score = sub_graph.edata.pop('t').sum(-1) * relation_pri / self.sqrt_dk
+                # end.record()
+                # th.cuda.synchronize()
+                # compute_attnscore_time += start.elapsed_time(end)
+                th.cuda.nvtx.range_pop()
+
+                th.cuda.nvtx.range_push("nvtx-edge-softmax")
+                # start.record()
                 attn_score = edge_softmax(sub_graph, attn_score, norm_by='dst')
+                # end.record()
+                # th.cuda.synchronize()
+                # edge_softmax_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-store-attnscore")
+                # start.record()
                 sub_graph.edata['t'] = attn_score.unsqueeze(-1)
+                # end.record()
+                # th.cuda.synchronize()
+                # store_attnscore_time += start.elapsed_time(end)
                 th.cuda.nvtx.range_pop()
 
                 iter_count += 1
                 th.cuda.nvtx.range_pop()
+            # outer_end.record()
+            # th.cuda.synchronize()
+            # total_time = outer_start.elapsed_time(outer_end)
             th.cuda.nvtx.range_pop()
+
+            # if step == 3:
+            #     print(f"total_time = {total_time}")
+            #     print(f"subgraph_time = {subgraph_time}")
+            #     print(f"getlinear_params_time = {getlinear_params_time}")
+            #     print(f"multiply_linears_time = {multiply_linears_time}")
+            #     print(f"getrelation_params_time = {getrelation_params_time}")
+            #     print(f"einsum_time = {einsum_time}")
+            #     print(f"storedata_time = {storedata_time}")
+            #     print(f"apply_edges_time = {apply_edges_time}")
+            #     print(f"compute_attnscore_time = {compute_attnscore_time}")
+            #     print(f"edge_softmax_time = {edge_softmax_time}")
+            #     print(f"store_attnscore_time = {store_attnscore_time}")
 
             th.cuda.nvtx.range_push("nvtx-multi-update-all")
             G.multi_update_all({etype : (fn.u_mul_e('v_%d' % e_id, 't', 'm'), fn.sum('m', 't')) \
@@ -214,7 +296,7 @@ class HGT(nn.Module):
                 print(f"block: {G} len(G.ntypes): {len(G.ntypes)}")
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-layer")
-                h = self.gcs[i](G, h)
+                h = self.gcs[i](G, h, step=step)
                 th.cuda.nvtx.range_pop()
                 th.cuda.profiler.cudart().cudaProfilerStop()
                 exit()
