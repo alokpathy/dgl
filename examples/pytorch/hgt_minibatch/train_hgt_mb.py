@@ -32,7 +32,21 @@ import math
 from ogb.nodeproppred import DglNodePropPredDataset
 import torch.autograd.profiler as profiler
 
+timing = False
+
 th.manual_seed(0)
+
+def start_time(timer):
+    if timing:
+        timer.record()
+
+def stop_time(start_timer, stop_timer):
+    if timing:
+        stop_timer.record()
+        th.cuda.synchronize()
+        return start_timer.elapsed_time(stop_timer)
+    else:
+        return 0.0
 
 class HGTLayer(nn.Module):
     def __init__(self,
@@ -86,6 +100,8 @@ class HGTLayer(nn.Module):
             node_dict, edge_dict = self.node_dict, self.edge_dict
             th.cuda.nvtx.range_push("nvtx-attn-iters")
             iter_count = 0
+            total_start = th.cuda.Event(enable_timing=True)
+            total_end = th.cuda.Event(enable_timing=True)
             outer_start = th.cuda.Event(enable_timing=True)
             outer_end = th.cuda.Event(enable_timing=True)
             start = th.cuda.Event(enable_timing=True)
@@ -102,7 +118,10 @@ class HGTLayer(nn.Module):
             edge_softmax_time = 0.0
             store_attnscore_time = 0.0
 
-            outer_start.record()
+            # total_start.record()
+            # outer_start.record()
+            start_time(total_start)
+            start_time(outer_start)
             for srctype, etype, dsttype in G.canonical_etypes:
                 # if step == 3 and iter_count == 20:
                 #     th.cuda.nvtx.range_pop()
@@ -113,105 +132,126 @@ class HGTLayer(nn.Module):
                     th.cuda.nvtx.range_push("nvtx-attn-iters{}".format(iter_count))
 
                     th.cuda.nvtx.range_push("nvtx-subgraph")
-                    start.record()
+                    # start.record()
+                    start_time(start)
                     sub_graph = G[srctype, etype, dsttype]
-                    end.record()
-                    th.cuda.synchronize()
-                    subgraph_time += start.elapsed_time(end)
+                    # end.record()
+                    # th.cuda.synchronize()
+                    # subgraph_time += start.elapsed_time(end)
+                    subgraph_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
 
                     th.cuda.nvtx.range_push("nvtx-getlinear-params")
-                    start.record()
+                    # start.record()
+                    start_time(start)
                     k_linear = self.k_linears[node_dict[srctype]]
                     v_linear = self.v_linears[node_dict[srctype]]
                     q_linear = self.q_linears[node_dict[dsttype]]
-                    end.record()
-                    th.cuda.synchronize()
-                    getlinear_params_time += start.elapsed_time(end)
+                    # end.record()
+                    # th.cuda.synchronize()
+                    # getlinear_params_time += start.elapsed_time(end)
+                    getlinear_params_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
 
                     th.cuda.nvtx.range_push("nvtx-multiply-linears")
-                    start.record()
+                    # start.record()
+                    start_time(start)
                     # k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                     # v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                     k = k_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
                     v = v_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
                     # q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
                     q = q_linear(h["dst"][dsttype]).view(-1, self.n_heads, self.d_k)
-                    end.record()
-                    th.cuda.synchronize()
-                    multiply_linears_time += start.elapsed_time(end)
+                    # end.record()
+                    # th.cuda.synchronize()
+                    # multiply_linears_time += start.elapsed_time(end)
+                    multiply_linears_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
 
                     th.cuda.nvtx.range_push("nvtx-getrelation-params")
-                    start.record()
+                    # start.record()
+                    start_time(start)
                     # e_id = self.edge_dict[etype]
                     e_id = self.edge_dict[(srctype, etype, dsttype)]
 
                     relation_att = self.relation_att[e_id]
                     relation_pri = self.relation_pri[e_id]
                     relation_msg = self.relation_msg[e_id]
-                    end.record()
-                    th.cuda.synchronize()
-                    getrelation_params_time += start.elapsed_time(end)
+                    # end.record()
+                    # th.cuda.synchronize()
+                    # getrelation_params_time += start.elapsed_time(end)
+                    getrelation_params_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
 
                     th.cuda.nvtx.range_push("nvtx-einsum")
-                    start.record()
+                    # start.record()
+                    start_time(start)
                     k = th.einsum("bij,ijk->bik", k, relation_att)
                     v = th.einsum("bij,ijk->bik", v, relation_msg)
-                    end.record()
-                    th.cuda.synchronize()
-                    einsum_time += start.elapsed_time(end)
+                    # end.record()
+                    # th.cuda.synchronize()
+                    # einsum_time += start.elapsed_time(end)
+                    einsum_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
 
+                # autocast end
                 k = k.float()
                 q = q.float()
                 v = v.float()
 
                 th.cuda.nvtx.range_push("nvtx-storedata")
-                start.record()
+                # start.record()
+                start_time(start)
                 sub_graph.srcdata['k'] = k
                 sub_graph.dstdata['q'] = q
                 sub_graph.srcdata['v_%d' % e_id] = v
-                end.record()
-                th.cuda.synchronize()
-                storedata_time += start.elapsed_time(end)
+                # end.record()
+                # th.cuda.synchronize()
+                # storedata_time += start.elapsed_time(end)
+                storedata_time += stop_time(start, end)
                 th.cuda.nvtx.range_pop()
 
                 sub_graph.srcdata['k'] = sub_graph.srcdata['k'].float()
                 sub_graph.dstdata['q'] = sub_graph.dstdata['q'].float()
 
                 th.cuda.nvtx.range_push("nvtx-apply-edges")
-                start.record()
+                # start.record()
+                start_time(start)
                 sub_graph.apply_edges(fn.v_dot_u('q', 'k', 't'))
-                end.record()
-                th.cuda.synchronize()
-                apply_edges_time += start.elapsed_time(end)
+                # end.record()
+                # th.cuda.synchronize()
+                # apply_edges_time += start.elapsed_time(end)
+                apply_edges_time += stop_time(start, end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-compute-attnscore")
-                start.record()
+                # start.record()
+                start_time(start)
                 attn_score = sub_graph.edata.pop('t').sum(-1) * relation_pri / self.sqrt_dk
-                end.record()
-                th.cuda.synchronize()
-                compute_attnscore_time += start.elapsed_time(end)
+                # end.record()
+                # th.cuda.synchronize()
+                # compute_attnscore_time += start.elapsed_time(end)
+                compute_attnscore_time += stop_time(start, end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-edge-softmax")
-                start.record()
+                # start.record()
+                start_time(start)
                 attn_score = edge_softmax(sub_graph, attn_score, norm_by='dst')
-                end.record()
-                th.cuda.synchronize()
-                edge_softmax_time += start.elapsed_time(end)
+                # end.record()
+                # th.cuda.synchronize()
+                # edge_softmax_time += start.elapsed_time(end)
+                edge_softmax_time += stop_time(start, end)
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-store-attnscore")
-                start.record()
+                # start.record()
+                start_time(start)
                 sub_graph.edata['t'] = attn_score.unsqueeze(-1)
-                end.record()
-                th.cuda.synchronize()
-                store_attnscore_time += start.elapsed_time(end)
+                # end.record()
+                # th.cuda.synchronize()
+                # store_attnscore_time += start.elapsed_time(end)
+                store_attnscore_time += stop_time(start, end)
                 th.cuda.nvtx.range_pop()
 
                 iter_count += 1
@@ -219,13 +259,14 @@ class HGTLayer(nn.Module):
 
             sub_graph.edata['t'] = sub_graph.edata['t'].float()
 
-            outer_end.record()
             th.cuda.nvtx.range_pop()
-            th.cuda.synchronize()
-            total_time = outer_start.elapsed_time(outer_end)
+            # outer_end.record()
+            # th.cuda.synchronize()
+            # total_attn_time = outer_start.elapsed_time(outer_end)
+            total_attn_time = stop_time(outer_start, outer_end)
 
-            if step == 3:
-                print(f"total_time = {total_time}")
+            if timing and step == 3:
+                print(f"total_attn_time = {total_attn_time}")
                 print(f"subgraph_time = {subgraph_time}")
                 print(f"getlinear_params_time = {getlinear_params_time}")
                 print(f"multiply_linears_time = {multiply_linears_time}")
@@ -270,6 +311,12 @@ class HGTLayer(nn.Module):
                 th.cuda.nvtx.range_pop()
                 iter_count += 1
             th.cuda.nvtx.range_pop()
+            if timing and step == 3:
+                # total_end.record()
+                # th.cuda.synchronize()
+                # total_time = total_start.elapsed_time(total_end)
+                total_time = stop_time(total_start, total_end)
+                print(f"total_time = {total_time}")
             return new_h
 
 class HGT(nn.Module):
@@ -782,6 +829,7 @@ def main(args, devices):
         print("no multi-gpu")
 
 def config():
+    global timing
     parser = argparse.ArgumentParser(description='RGCN')
     parser.add_argument("--dropout", type=float, default=0,
             help="dropout probability")
@@ -805,6 +853,8 @@ def config():
             help="Fan-out of neighbor sampling.")
     parser.add_argument("--use-self-loop", default=False, action='store_true',
             help="include self feature as a special relation")
+    parser.add_argument("--timing", default=False, action='store_true',
+            help="turn on cudaEvent timers")
     parser.add_argument('--n_inp',   type=int, default=256)
     parser.add_argument('--clip',    type=int, default=1.0) 
     parser.add_argument('--max_lr',  type=float, default=1e-3) 
@@ -827,6 +877,7 @@ def config():
             help='Use layer norm')
     parser.set_defaults(validation=True)
     args = parser.parse_args()
+    timing = args.timing
     return args
 
 if __name__ == '__main__':
