@@ -112,17 +112,21 @@ class HGTLayer(nn.Module):
             multiply_linears_time = 0.0
             getrelation_params_time = 0.0
             einsum_time = 0.0
+            floatcast_time = 0.0
             storedata_time = 0.0
             apply_edges_time = 0.0
             compute_attnscore_time = 0.0
             edge_softmax_time = 0.0
             store_attnscore_time = 0.0
 
+            if step == 3:
+                print("k_flop,v_flop,q_flop,total_flop")
+
             # total_start.record()
             # outer_start.record()
             start_time(total_start)
             start_time(outer_start)
-            for srctype, etype, dsttype in G.canonical_etypes:
+            for i, (srctype, etype, dsttype) in enumerate(G.canonical_etypes):
                 # if step == 3 and iter_count == 20:
                 #     th.cuda.nvtx.range_pop()
                 #     th.cuda.profiler.cudart().cudaProfilerStop()
@@ -158,6 +162,9 @@ class HGTLayer(nn.Module):
                     start_time(start)
                     # k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                     # v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
+                    # print(f"reltype: {i} k_linear.weight.size: {k_linear.weight.size()} k_linear.bias.size: {k_linear.bias.size()}")
+                    # print(f"reltype: {i} v_linear.weight.size: {v_linear.weight.size()} v_linear.bias.size: {v_linear.bias.size()}")
+                   #  print(f"reltype: {i} h[src][srctype].size: {h['src'][srctype].size()}")
                     k = k_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
                     v = v_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
                     # q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
@@ -167,6 +174,16 @@ class HGTLayer(nn.Module):
                     # multiply_linears_time += start.elapsed_time(end)
                     multiply_linears_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
+
+                    if step == 3:
+                        print(i, end=",") 
+                        k_flop = 2 * k_linear.weight.size(0) * k_linear.weight.size(1) * h['src'][srctype].size(0)
+                        v_flop = 2 * v_linear.weight.size(0) * v_linear.weight.size(1) * h['src'][srctype].size(0)
+                        q_flop = 2 * v_linear.weight.size(0) * v_linear.weight.size(1) * h['src'][srctype].size(0)
+                        print(k_flop, end=",")
+                        print(v_flop, end=",")
+                        print(q_flop, end=",")
+                        print(k_flop + v_flop + q_flop)
 
                     th.cuda.nvtx.range_push("nvtx-getrelation-params")
                     # start.record()
@@ -195,9 +212,13 @@ class HGTLayer(nn.Module):
                     th.cuda.nvtx.range_pop()
 
                 # autocast end
+                start.record()
+                th.cuda.nvtx.range_push("nvtx-floatcast")
                 k = k.float()
                 q = q.float()
                 v = v.float()
+                th.cuda.nvtx.range_pop()
+                floatcast_time += stop_time(start, end)
 
                 th.cuda.nvtx.range_push("nvtx-storedata")
                 # start.record()
@@ -272,6 +293,7 @@ class HGTLayer(nn.Module):
                 print(f"multiply_linears_time = {multiply_linears_time}")
                 print(f"getrelation_params_time = {getrelation_params_time}")
                 print(f"einsum_time = {einsum_time}")
+                print(f"floatcast_time = {floatcast_time}")
                 print(f"storedata_time = {storedata_time}")
                 print(f"apply_edges_time = {apply_edges_time}")
                 print(f"compute_attnscore_time = {compute_attnscore_time}")
@@ -352,7 +374,7 @@ class HGT(nn.Module):
                 h["src"][ntype] = F.gelu(self.adapt_ws[n_id](G.srcnodes[ntype].data['inp']))
                 h["dst"][ntype] = F.gelu(self.adapt_ws[n_id](G.dstnodes[ntype].data['inp']))
             if epoch == 0 and step == 3:
-                print(f"block: {G} len(G.ntypes): {len(G.ntypes)}")
+                # print(f"block: {G} len(G.ntypes): {len(G.ntypes)}")
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-layer")
                 h = self.gcs[i](G, h, step=step)

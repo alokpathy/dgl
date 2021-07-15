@@ -12,6 +12,20 @@ from .... import edge_subgraph
 
 import torch.autograd.profiler as profiler
 
+timing = False
+
+def start_time(timer):
+    if timing:
+        timer.record()
+
+def stop_time(start_timer, stop_timer):
+    if timing:
+        stop_timer.record()
+        th.cuda.synchronize()
+        return start_timer.elapsed_time(stop_timer)
+    else:
+        return 0.0
+
 class RelGraphConv(nn.Module):
     r"""Relational graph convolution layer.
 
@@ -202,6 +216,9 @@ class RelGraphConv(nn.Module):
                   This requires the input graph to store edges sorted by their type IDs.
                   Preferred format if ``lowmem == True``.
         """
+        bmm_start = th.cuda.Event(enable_timing=True)
+        bmm_stop = th.cuda.Event(enable_timing=True)
+
         th.cuda.nvtx.range_push("nvtx-basis-mult")
         if self.num_bases < self.num_rels:
             # generate all weights from bases
@@ -232,13 +249,19 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_push("nvtx-lowmem-matmuls")
             h_t = th.split(h, etypes)
             msg = []
+            bmm_time = 0.0
             for etype in range(self.num_rels):
                 if h_t[etype].shape[0] == 0:
                     continue
                 # print(f"etype: {etype} h_t.size: {h_t[etype].size()} weight.size: {weight[etype].size()}")
                 th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
-                msg.append(th.matmul(h_t[etype], weight[etype]))
+                start_time(bmm_start)
+                with th.cuda.amp.autocast():
+                    msg.append(th.matmul(h_t[etype], weight[etype]))
+                bmm_time += stop_time(bmm_start, bmm_stop)
                 th.cuda.nvtx.range_pop()
+            if timing:
+                print(f"bmm_time: {bmm_time}")
             msg = th.cat(msg)
             th.cuda.nvtx.range_pop()
             # print(f"msg.size: {msg.size()}")
@@ -252,7 +275,11 @@ class RelGraphConv(nn.Module):
             weight = weight.index_select(0, etypes)
             th.cuda.nvtx.range_pop()
             th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
-            msg = th.bmm(h.unsqueeze(1), weight).squeeze(1)
+            start_time(bmm_start)
+            with th.cuda.amp.autocast():
+                msg = th.bmm(h.unsqueeze(1), weight).squeeze(1)
+            if timing:
+                print(f"bmm_time: {stop_time(bmm_start, bmm_stop)}")
             th.cuda.nvtx.range_pop()
             # print(f"etypes.size: {etypes.size()} h.size: {h.unsqueeze(1).size()} weight.size: {weight.size()} msg.size: {msg.size()}")
 
