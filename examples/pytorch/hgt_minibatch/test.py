@@ -23,8 +23,8 @@ def stop_time(start_timer, stop_timer):
     else:
         return 0.0
 
-# dims = [100, 200, 300, 400, 500, 600, 800, 1000, 2000, 4000, 8000, 10000, 16000, 20000]
-dims = [2 ** i for i in range(6, 15)]
+dims = [100, 200, 300, 400, 500, 600, 800, 1000, 2000, 4000, 8000, 10000, 16000, 20000]
+# dims = [2 ** i for i in range(6, 15)]
 
 gpu_times = []
 tc_times = []

@@ -34,6 +34,8 @@ import torch.autograd.profiler as profiler
 
 timing = False
 
+dgl.random.seed(0)
+np.random.seed(0)
 th.manual_seed(0)
 
 def start_time(timer):
@@ -71,17 +73,19 @@ class HGTLayer(nn.Module):
         self.sqrt_dk       = math.sqrt(self.d_k)
         self.att           = None
 
-        self.k_linears   = nn.ModuleList()
+        # self.k_linears   = nn.ModuleList()
         self.q_linears   = nn.ModuleList()
-        self.v_linears   = nn.ModuleList()
+        self.kv_linears   = nn.ModuleList()
+        # self.v_linears   = nn.ModuleList()
         self.a_linears   = nn.ModuleList()
         self.norms       = nn.ModuleList()
         self.use_norm    = use_norm
 
         for t in range(self.num_types):
-            self.k_linears.append(nn.Linear(in_dim,   out_dim))
+            # self.k_linears.append(nn.Linear(in_dim,   out_dim))
             self.q_linears.append(nn.Linear(in_dim,   out_dim))
-            self.v_linears.append(nn.Linear(in_dim,   out_dim))
+            self.kv_linears.append(nn.Linear(in_dim,   out_dim * 2))
+            # self.v_linears.append(nn.Linear(in_dim,   out_dim))
             self.a_linears.append(nn.Linear(out_dim,  out_dim))
             if use_norm:
                 self.norms.append(nn.LayerNorm(out_dim))
@@ -120,7 +124,8 @@ class HGTLayer(nn.Module):
             store_attnscore_time = 0.0
 
             if step == 3:
-                print("k_flop,v_flop,q_flop,total_flop")
+                # print("k_flop,v_flop,q_flop,total_flop")
+                print("kv_flop,q_flop,total_flop")
 
             # total_start.record()
             # outer_start.record()
@@ -148,8 +153,9 @@ class HGTLayer(nn.Module):
                     th.cuda.nvtx.range_push("nvtx-getlinear-params")
                     # start.record()
                     start_time(start)
-                    k_linear = self.k_linears[node_dict[srctype]]
-                    v_linear = self.v_linears[node_dict[srctype]]
+                    # k_linear = self.k_linears[node_dict[srctype]]
+                    # v_linear = self.v_linears[node_dict[srctype]]
+                    kv_linear = self.kv_linears[node_dict[srctype]]
                     q_linear = self.q_linears[node_dict[dsttype]]
                     # end.record()
                     # th.cuda.synchronize()
@@ -160,14 +166,20 @@ class HGTLayer(nn.Module):
                     th.cuda.nvtx.range_push("nvtx-multiply-linears")
                     # start.record()
                     start_time(start)
-                    # k = k_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
-                    # v = v_linear(h[srctype]).view(-1, self.n_heads, self.d_k)
                     # print(f"reltype: {i} k_linear.weight.size: {k_linear.weight.size()} k_linear.bias.size: {k_linear.bias.size()}")
+                    # print(f"reltype: {i} h.size: {h['src'][srctype].size()} n_heads: {self.n_heads} d_k: {self.d_k}")
                     # print(f"reltype: {i} v_linear.weight.size: {v_linear.weight.size()} v_linear.bias.size: {v_linear.bias.size()}")
                    #  print(f"reltype: {i} h[src][srctype].size: {h['src'][srctype].size()}")
-                    k = k_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
-                    v = v_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
-                    # q = q_linear(h[dsttype]).view(-1, self.n_heads, self.d_k)
+                    # k = k_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
+                    # v = v_linear(h["src"][srctype]).view(-1, self.n_heads, self.d_k)
+                    kv = kv_linear(h["src"][srctype])
+                    k = kv[:,:self.out_dim].view(-1, self.n_heads, self.d_k)
+                    v = kv[:,self.out_dim:].view(-1, self.n_heads, self.d_k)
+
+                    # print(f"reltype: {i} kv.size: {kv.size()}")
+                    # print(f"reltype: {i} k.size: {k.size()}")
+                    # print(f"reltype: {i} v.size: {v.size()}")
+                    
                     q = q_linear(h["dst"][dsttype]).view(-1, self.n_heads, self.d_k)
                     # end.record()
                     # th.cuda.synchronize()
@@ -175,15 +187,18 @@ class HGTLayer(nn.Module):
                     multiply_linears_time += stop_time(start, end)
                     th.cuda.nvtx.range_pop()
 
-                    if step == 3:
-                        print(i, end=",") 
-                        k_flop = 2 * k_linear.weight.size(0) * k_linear.weight.size(1) * h['src'][srctype].size(0)
-                        v_flop = 2 * v_linear.weight.size(0) * v_linear.weight.size(1) * h['src'][srctype].size(0)
-                        q_flop = 2 * v_linear.weight.size(0) * v_linear.weight.size(1) * h['src'][srctype].size(0)
-                        print(k_flop, end=",")
-                        print(v_flop, end=",")
-                        print(q_flop, end=",")
-                        print(k_flop + v_flop + q_flop)
+                    # if step == 3:
+                    #     print(i, end=",") 
+                    #     # k_flop = 2 * k_linear.weight.size(0) * k_linear.weight.size(1) * h['src'][srctype].size(0)
+                    #     # v_flop = 2 * v_linear.weight.size(0) * v_linear.weight.size(1) * h['src'][srctype].size(0)
+                    #     kv_flop = 2 * kv_linear.weight.size(0) * kv_linear.weight.size(1) * h['src'][srctype].size(0)
+                    #     q_flop = 2 * q_linear.weight.size(0) * q_linear.weight.size(1) * h['src'][srctype].size(0)
+                    #     # print(k_flop, end=",")
+                    #     # print(v_flop, end=",")
+                    #     print(kv_flop, end=",")
+                    #     print(q_flop, end=",")
+                    #     # print(k_flop + v_flop + q_flop)
+                    #     print(kv_flop + q_flop)
 
                     th.cuda.nvtx.range_push("nvtx-getrelation-params")
                     # start.record()
