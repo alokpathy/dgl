@@ -9,10 +9,11 @@ from .... import function as fn
 from .. import utils
 from ....base import DGLError
 from .... import edge_subgraph
+from ....fused_gemm import fused_gemm
 
 import torch.autograd.profiler as profiler
 
-timing = False
+timing = True
 
 def start_time(timer):
     if timing:
@@ -250,18 +251,22 @@ class RelGraphConv(nn.Module):
             h_t = th.split(h, etypes)
             msg = []
             bmm_time = 0.0
+            dim_count = 0
             for etype in range(self.num_rels):
                 if h_t[etype].shape[0] == 0:
                     continue
-                # print(f"etype: {etype} h_t.size: {h_t[etype].size()} weight.size: {weight[etype].size()}")
                 th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
                 start_time(bmm_start)
-                with th.cuda.amp.autocast():
-                    msg.append(th.matmul(h_t[etype], weight[etype]))
+                # with th.cuda.amp.autocast():
+                dim_count += h_t[etype].numel() + weight[etype].numel()
+                # print(f"etype: {etype} h_t.size: {h_t[etype].size()} weight.size: {weight[etype].size()}")
+                result = th.matmul(h_t[etype], weight[etype])
+                # result = fused_gemm(h_t[etype], weight[etype])
+                msg.append(result)
                 bmm_time += stop_time(bmm_start, bmm_stop)
                 th.cuda.nvtx.range_pop()
             if timing:
-                print(f"bmm_time: {bmm_time}")
+                print(f"bmm_time: {bmm_time} dim_count: {dim_count}")
             msg = th.cat(msg)
             th.cuda.nvtx.range_pop()
             # print(f"msg.size: {msg.size()}")
@@ -275,11 +280,13 @@ class RelGraphConv(nn.Module):
             weight = weight.index_select(0, etypes)
             th.cuda.nvtx.range_pop()
             th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
+            print(f"h.size: {h.unsqueeze(1).size()} weight.size: {weight.size()}")
             start_time(bmm_start)
-            with th.cuda.amp.autocast():
-                msg = th.bmm(h.unsqueeze(1), weight).squeeze(1)
+            # with th.cuda.amp.autocast():
+            dim_count = h.numel() + weight.numel()
+            msg = th.bmm(h.unsqueeze(1), weight).squeeze(1)
             if timing:
-                print(f"bmm_time: {stop_time(bmm_start, bmm_stop)}")
+                print(f"bmm_time: {stop_time(bmm_start, bmm_stop)} dim_count: {dim_count}")
             th.cuda.nvtx.range_pop()
             # print(f"etypes.size: {etypes.size()} h.size: {h.unsqueeze(1).size()} weight.size: {weight.size()} msg.size: {msg.size()}")
 

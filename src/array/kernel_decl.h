@@ -17,6 +17,8 @@
 namespace dgl {
 namespace aten {
 
+void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int N, int K, int lda, int ldb, int ldc);
+
 /*!
  * \brief Generalized Sparse Matrix Dense Matrix Multiplication on Csr format.
  */

@@ -358,6 +358,22 @@ DGL_REGISTER_GLOBAL("sparse._CAPI_DGLCSRMask")
     *rv = result;
   });
 
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMM")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+    NDArray A = args[0];
+    NDArray B = args[1];
+    NDArray C = args[2];
+
+    int M = args[3];
+    int N = args[4];
+    int K = args[5];
+
+    int lda = args[6];
+    int ldb = args[7];
+    int ldc = args[8];
+    fused_gemm(A, B, C, M, N, K, lda, ldb, ldc);
+  });
+
 #ifdef USE_TVM
 DGL_REGISTER_GLOBAL("sparse._CAPI_FG_LoadModule")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {

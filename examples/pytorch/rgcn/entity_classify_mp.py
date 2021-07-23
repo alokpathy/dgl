@@ -28,7 +28,9 @@ import tqdm
 from ogb.nodeproppred import DglNodePropPredDataset
 import torch.autograd.profiler as profiler
 
+np.random.seed(0)
 th.manual_seed(0)
+dgl.random.seed(0)
 
 class EntityClassify(nn.Module):
     """ Entity classification class for RGCN

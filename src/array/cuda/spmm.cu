@@ -3,6 +3,7 @@
  * \file array/cuda/spmm.cu
  * \brief SPMM C APIs and definitions.
  */
+#include <cutlass/gemm/device/gemm.h>
 #include <dgl/array.h>
 #include "./spmm.cuh"
 #include "./ge_spmm.cuh"
@@ -326,6 +327,45 @@ inline bool cusparse_available() {
 #endif
 }
 
+void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int N, int K, int lda, int ldb, int ldc) {
+  // printf("in fused_gemm %x %x %x\n", A->data, B->data, C->data);
+  using RowMajor = cutlass::layout::RowMajor;
+
+  using CutlassGemm = cutlass::gemm::device::Gemm<float,        // Data-type of A matrix
+                                                  RowMajor,  // Layout of A matrix
+                                                  float,        // Data-type of B matrix
+                                                  RowMajor,  // Layout of B matrix
+                                                  float,        // Data-type of C matrix
+                                                  RowMajor>; // Layout of C matrix
+
+  // Define a CUTLASS GEMM type
+  CutlassGemm gemm_operator;
+
+  // Construct the CUTLASS GEMM arguments object.
+  //
+  // One of CUTLASS's design patterns is to define gemm argument objects that are constructible
+  // in host code and passed to kernels by value. These may include pointers, strides, scalars,
+  // and other arguments needed by Gemm and its components.
+  //
+  // The benefits of this pattern are (1.) a structured, composable strategy for passing host-constructible
+  // arguments to kernels and (2.) minimized initialization overhead on kernel entry.
+  //
+  float alpha = 1.0f;
+  float beta = 0.0f;
+  CutlassGemm::Arguments args({M, N, K},  // Gemm Problem dimensions
+                              {(const float *)A->data, lda},    // Tensor-ref for source matrix A
+                              {(const float *)B->data, ldb},    // Tensor-ref for source matrix B
+                              {(float *)C->data, ldc},    // Tensor-ref for source matrix C
+                              {(float *)C->data, ldc},    // Tensor-ref for destination matrix D (may be different memory than source C matrix)
+                              {alpha, beta}); // Scalars used in the Epilogue
+
+  //
+  // Launch the CUTLASS GEMM kernel.
+  //
+  
+  cutlass::Status status = gemm_operator(args);
+}
+
 /*!
  * \brief CUDA implementation of g-SpMM on Csr format.
  * \note use cusparse if the reduce operator is `sum` and there is
@@ -412,6 +452,7 @@ void SpMMCoo(const std::string& op, const std::string& reduce,
              NDArray efeat,
              NDArray out,
              std::vector<NDArray> out_aux) {
+  
   if (reduce == "sum") {
     SWITCH_BITS(bits, DType, {
       SWITCH_OP(op, Op, {
