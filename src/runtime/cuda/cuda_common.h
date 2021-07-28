@@ -62,7 +62,7 @@ inline bool is_zero<dim3>(dim3 size) {
   {                                                                \
     cusparseStatus_t e = (func);                                   \
     CHECK(e == CUSPARSE_STATUS_SUCCESS)                            \
-        << "CUSPARSE ERROR: " << e;                                \
+        << "CUSPARSE ERROR: " << cusparseGetErrorString(e);        \
   }
 
 #define CUBLAS_CALL(func)                                          \

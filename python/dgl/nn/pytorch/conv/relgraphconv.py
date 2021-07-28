@@ -260,8 +260,8 @@ class RelGraphConv(nn.Module):
                 # with th.cuda.amp.autocast():
                 dim_count += h_t[etype].numel() + weight[etype].numel()
                 # print(f"etype: {etype} h_t.size: {h_t[etype].size()} weight.size: {weight[etype].size()}")
-                result = th.matmul(h_t[etype], weight[etype])
-                # result = fused_gemm(h_t[etype], weight[etype])
+                # result = th.matmul(h_t[etype], weight[etype])
+                result = fused_gemm(h_t[etype], weight[etype])
                 msg.append(result)
                 bmm_time += stop_time(bmm_start, bmm_stop)
                 th.cuda.nvtx.range_pop()

@@ -327,43 +327,143 @@ inline bool cusparse_available() {
 #endif
 }
 
-void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int N, int K, int lda, int ldb, int ldc) {
-  // printf("in fused_gemm %x %x %x\n", A->data, B->data, C->data);
-  using RowMajor = cutlass::layout::RowMajor;
-
-  using CutlassGemm = cutlass::gemm::device::Gemm<float,        // Data-type of A matrix
-                                                  RowMajor,  // Layout of A matrix
-                                                  float,        // Data-type of B matrix
-                                                  RowMajor,  // Layout of B matrix
-                                                  float,        // Data-type of C matrix
-                                                  RowMajor>; // Layout of C matrix
-
-  // Define a CUTLASS GEMM type
-  CutlassGemm gemm_operator;
-
-  // Construct the CUTLASS GEMM arguments object.
-  //
-  // One of CUTLASS's design patterns is to define gemm argument objects that are constructible
-  // in host code and passed to kernels by value. These may include pointers, strides, scalars,
-  // and other arguments needed by Gemm and its components.
-  //
-  // The benefits of this pattern are (1.) a structured, composable strategy for passing host-constructible
-  // arguments to kernels and (2.) minimized initialization overhead on kernel entry.
-  //
-  float alpha = 1.0f;
-  float beta = 0.0f;
-  CutlassGemm::Arguments args({M, N, K},  // Gemm Problem dimensions
-                              {(const float *)A->data, lda},    // Tensor-ref for source matrix A
-                              {(const float *)B->data, ldb},    // Tensor-ref for source matrix B
-                              {(float *)C->data, ldc},    // Tensor-ref for source matrix C
-                              {(float *)C->data, ldc},    // Tensor-ref for destination matrix D (may be different memory than source C matrix)
-                              {alpha, beta}); // Scalars used in the Epilogue
-
-  //
-  // Launch the CUTLASS GEMM kernel.
-  //
+__global__ void SetCsrOffsets(int *offsets, int M, int N) {
+  int     id = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
   
-  cutlass::Status status = gemm_operator(args);
+  for (int i = id; i < M + 1; i += stride) {
+    offsets[i] = i * N;
+  }
+}
+
+__global__ void SetCsrColumns(int *columns, int M, int N) {
+  int     id = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  
+  for (int i = id; i < M * N; i += stride) {
+    columns[i] = i % N;
+  }
+}
+
+void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int lda, int ldb, int ldc) {
+
+  auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
+
+  cusparseSpMatDescr_t matA, matB, matC;
+  void*  dBuffer1    = NULL, *dBuffer2   = NULL;
+  size_t bufferSize1 = 0,    bufferSize2 = 0;
+
+  // allocate cusparse handle if needed
+  if (!thr_entry->cusparse_handle) {
+    CUSPARSE_CALL(cusparseCreate(&(thr_entry->cusparse_handle)));
+  }
+
+  // Convert A into sparse matrix
+  int *dA_csrOffsets, *dA_columns;
+  CUDA_CALL( cudaMalloc(&dA_csrOffsets, (M + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_columns, M * K * sizeof(int)) );
+
+  const int nt_aoff = FindNumThreads(M + 1);
+  const int nb_aoff = (M + 1 + nt_aoff - 1) / nt_aoff;
+
+  const int nt_acol = FindNumThreads(M * K);
+  const int nb_acol = (M * K + nt_acol - 1) / nt_acol;
+
+  CUDA_KERNEL_CALL( SetCsrOffsets, nb_aoff, nt_aoff, 0, thr_entry->stream, dA_csrOffsets, M, K );
+  CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M, K );
+  CUSPARSE_CALL( cusparseCreateCsr(&matA, M, K, M * K,
+                                    dA_csrOffsets, dA_columns, A->data,
+                                    CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                                    CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+
+  // Convert B into sparse matrix
+  int *dB_csrOffsets, *dB_columns;
+  CUDA_CALL( cudaMalloc(&dB_csrOffsets, (K + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dB_columns, K * N * sizeof(int)) );
+
+  const int nt_boff = FindNumThreads(K + 1);
+  const int nb_boff = (K + 1 + nt_boff - 1) / nt_boff;
+
+  const int nt_bcol = FindNumThreads(K * N);
+  const int nb_bcol = (K * N + nt_bcol - 1) / nt_bcol;
+
+  CUDA_KERNEL_CALL( SetCsrOffsets, nb_boff, nt_boff, 0, thr_entry->stream, dB_csrOffsets, K, N );
+  CUDA_KERNEL_CALL( SetCsrColumns, nb_bcol, nt_bcol, 0, thr_entry->stream, dB_columns, K, N );
+
+  CUSPARSE_CALL( cusparseCreateCsr(&matB, K, N, K * N,
+                                    dB_csrOffsets, dB_columns, B->data,
+                                    CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                                    CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+  // Convert C into sparse matrix
+  CUSPARSE_CALL( cusparseCreateCsr(&matC, M, N, 0,
+                                    NULL, NULL, NULL,
+                                    CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                                    CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+
+  cusparseSpGEMMDescr_t spgemmDesc;
+  CUSPARSE_CALL( cusparseSpGEMM_createDescr(&spgemmDesc) );
+
+  // ask bufferSize1 bytes for external memory
+  float               alpha       = 1.0f;
+  float               beta        = 0.0f;
+  cusparseOperation_t opA         = CUSPARSE_OPERATION_NON_TRANSPOSE;
+  cusparseOperation_t opB         = CUSPARSE_OPERATION_NON_TRANSPOSE;
+  CUSPARSE_CALL( cusparseSpGEMM_workEstimation(thr_entry->cusparse_handle, opA, opB,
+                                        &alpha, matA, matB, &beta, matC,
+                                        CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT,
+                                        spgemmDesc, &bufferSize1, NULL) );
+  CUDA_CALL( cudaMalloc((void**) &dBuffer1, bufferSize1) );
+
+  // inspect the matrices A and B to understand the memory requirement for
+  // the next step
+  CUSPARSE_CALL( cusparseSpGEMM_workEstimation(thr_entry->cusparse_handle, opA, opB,
+                                        &alpha, matA, matB, &beta, matC,
+                                        CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT,
+                                        spgemmDesc, &bufferSize1, dBuffer1) );
+
+  // ask bufferSize2 bytes for external memory
+  CUSPARSE_CALL( cusparseSpGEMM_compute(thr_entry->cusparse_handle, opA, opB,
+                                 &alpha, matA, matB, &beta, matC,
+                                 CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT,
+                                 spgemmDesc, &bufferSize2, NULL) );
+  CUDA_CALL( cudaMalloc((void**) &dBuffer2, bufferSize2) );
+
+  // compute the intermediate product of A * B
+  CUSPARSE_CALL( cusparseSpGEMM_compute(thr_entry->cusparse_handle, opA, opB,
+                                             &alpha, matA, matB, &beta, matC,
+                                         CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT,
+                                         spgemmDesc, &bufferSize2, dBuffer2) );
+
+  // allocate matrix C
+  int *dC_csrOffsets, *dC_columns;
+  CUDA_CALL( cudaMalloc((void**) &dC_csrOffsets, (M + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc((void**) &dC_columns, M * N * sizeof(int))   ); 
+
+  // update matC with the new pointers
+  CUSPARSE_CALL( cusparseCsrSetPointers(matC, dC_csrOffsets, dC_columns, C->data) );
+
+  // if beta != 0, cusparseSpGEMM_copy reuses/updates the values of dC_values
+
+  // copy the final products to the matrix C
+  CUSPARSE_CALL( cusparseSpGEMM_copy(thr_entry->cusparse_handle, opA, opB,
+                          &alpha, matA, matB, &beta, matC,
+                          CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc) );
+
+  // destroy matrix/vector descriptors
+  CUDA_CALL( cudaFree(dA_csrOffsets) );
+  CUDA_CALL( cudaFree(dA_columns) );
+  CUDA_CALL( cudaFree(dB_csrOffsets) );
+  CUDA_CALL( cudaFree(dB_columns) );
+  CUDA_CALL( cudaFree(dC_csrOffsets) );
+  CUDA_CALL( cudaFree(dC_columns) );
+  CUDA_CALL( cudaFree(dBuffer1) );
+  CUDA_CALL( cudaFree(dBuffer2) );
+
+  CUSPARSE_CALL( cusparseSpGEMM_destroyDescr(spgemmDesc) );
+  CUSPARSE_CALL( cusparseDestroySpMat(matA) );
+  CUSPARSE_CALL( cusparseDestroySpMat(matB) );
+  CUSPARSE_CALL( cusparseDestroySpMat(matC) );
+
 }
 
 /*!
