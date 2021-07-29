@@ -10,6 +10,8 @@
 #include "./functor.cuh"
 #include "../../runtime/cuda/cuda_common.h"
 
+// #define TIMING
+
 namespace dgl {
 
 using namespace cuda;
@@ -327,28 +329,48 @@ inline bool cusparse_available() {
 #endif
 }
 
-__global__ void SetCsrOffsets(int *offsets, int M, int N) {
+__global__ void SetCsrOffsets(int *offsets, int M1, int N1, int M2, int N2) {
   int     id = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   
-  for (int i = id; i < M + 1; i += stride) {
-    offsets[i] = i * N;
+  for (int i = id; i < M1; i += stride) {
+    offsets[i] = i * N1;
+  }
+
+  for (int i = id + M1; i < M1 + M2 + 1; i += stride) {
+    offsets[i] = M1 * N1 + (i - M1) * N2;
   }
 }
 
-__global__ void SetCsrColumns(int *columns, int M, int N) {
+__global__ void SetCsrColumns(int *columns, int M1, int N1, int M2, int N2) {
   int     id = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   
-  for (int i = id; i < M * N; i += stride) {
-    columns[i] = i % N;
+  for (int i = id; i < M1 * N1; i += stride) {
+    columns[i] = i % N1;
+  }
+
+  for (int i = id + M1 * N1; i < M1 * N1 + M2 * N2; i += stride) {
+    columns[i] = N1 + (i - M1 * N1) % N2;
   }
 }
 
-void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int lda, int ldb, int ldc) {
+// TODO: template this with generic DType
+void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
+                    NDArray A2, NDArray B2, NDArray C2, int M2, int K2, int N2) {
 
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
 
+#ifdef TIMING
+  cudaEvent_t total_start, total_stop;
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  cudaEventCreate(&total_start);
+  cudaEventCreate(&total_stop);
+
+  cudaEventRecord(total_start);
+#endif
   cusparseSpMatDescr_t matA, matB, matC;
   void*  dBuffer1    = NULL, *dBuffer2   = NULL;
   size_t bufferSize1 = 0,    bufferSize2 = 0;
@@ -358,44 +380,80 @@ void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int lda, i
     CUSPARSE_CALL(cusparseCreate(&(thr_entry->cusparse_handle)));
   }
 
+#ifdef TIMING
+  cudaEventRecord(start);
+#endif
   // Convert A into sparse matrix
   int *dA_csrOffsets, *dA_columns;
-  CUDA_CALL( cudaMalloc(&dA_csrOffsets, (M + 1) * sizeof(int)) );
-  CUDA_CALL( cudaMalloc(&dA_columns, M * K * sizeof(int)) );
+  float *dA_values;
+  // CUDA_CALL( cudaMalloc(&dA_csrOffsets, (M + 1) * sizeof(int)) );
+  // CUDA_CALL( cudaMalloc(&dA_columns, M * K * sizeof(int)) );
+  int matA_numrows = M1 + M2;
+  int matA_nnz = M1 * K1 + M2 * K2;
+  CUDA_CALL( cudaMalloc(&dA_csrOffsets, (matA_numrows + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_columns, matA_nnz * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_values, matA_nnz * sizeof(float)) );
 
-  const int nt_aoff = FindNumThreads(M + 1);
-  const int nb_aoff = (M + 1 + nt_aoff - 1) / nt_aoff;
+  const int nt_aoff = FindNumThreads(matA_numrows + 1);
+  const int nb_aoff = (matA_numrows + 1 + nt_aoff - 1) / nt_aoff;
 
-  const int nt_acol = FindNumThreads(M * K);
-  const int nb_acol = (M * K + nt_acol - 1) / nt_acol;
+  const int nt_acol = FindNumThreads(matA_nnz);
+  const int nb_acol = (matA_nnz + nt_acol - 1) / nt_acol;
 
-  CUDA_KERNEL_CALL( SetCsrOffsets, nb_aoff, nt_aoff, 0, thr_entry->stream, dA_csrOffsets, M, K );
-  CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M, K );
-  CUSPARSE_CALL( cusparseCreateCsr(&matA, M, K, M * K,
-                                    dA_csrOffsets, dA_columns, A->data,
+  // CUDA_KERNEL_CALL( SetCsrOffsets, nb_aoff, nt_aoff, 0, thr_entry->stream, dA_csrOffsets, M, K );
+  // CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M, K );
+  // CUSPARSE_CALL( cusparseCreateCsr(&matA, M, K, M * K,
+  //                                   dA_csrOffsets, dA_columns, A->data,
+  //                                   CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+  //                                   CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+  CUDA_KERNEL_CALL( SetCsrOffsets, nb_aoff, nt_aoff, 0, thr_entry->stream, dA_csrOffsets, M1, K1, M2, K2 );
+  CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M1, K1, M2, K2 );
+  CUDA_CALL( cudaMemcpy(dA_values, A1->data, M1 * K1 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  CUDA_CALL( cudaMemcpy(dA_values + M1 * K1, A2->data, M2 * K2 * sizeof(float), cudaMemcpyDeviceToDevice) );
+
+  CUSPARSE_CALL( cusparseCreateCsr(&matA, M1 + M2, K1 + K2, matA_nnz,
+                                    dA_csrOffsets, dA_columns, dA_values,
                                     CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                                     CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
 
   // Convert B into sparse matrix
   int *dB_csrOffsets, *dB_columns;
-  CUDA_CALL( cudaMalloc(&dB_csrOffsets, (K + 1) * sizeof(int)) );
-  CUDA_CALL( cudaMalloc(&dB_columns, K * N * sizeof(int)) );
+  float *dB_values;
+  // CUDA_CALL( cudaMalloc(&dB_csrOffsets, (K + 1) * sizeof(int)) );
+  // CUDA_CALL( cudaMalloc(&dB_columns, K * N * sizeof(int)) );
+  int matB_numrows = K1 + K2;
+  int matB_nnz = K1 * N1 + K2 * N2;
+  CUDA_CALL( cudaMalloc(&dB_csrOffsets, (matB_numrows + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dB_columns, matB_nnz * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dB_values, matB_nnz * sizeof(float)) );
 
-  const int nt_boff = FindNumThreads(K + 1);
-  const int nb_boff = (K + 1 + nt_boff - 1) / nt_boff;
+  const int nt_boff = FindNumThreads(matB_numrows + 1);
+  const int nb_boff = (matB_numrows + 1 + nt_boff - 1) / nt_boff;
 
-  const int nt_bcol = FindNumThreads(K * N);
-  const int nb_bcol = (K * N + nt_bcol - 1) / nt_bcol;
+  const int nt_bcol = FindNumThreads(matB_nnz);
+  const int nb_bcol = (matB_nnz + nt_bcol - 1) / nt_bcol;
 
-  CUDA_KERNEL_CALL( SetCsrOffsets, nb_boff, nt_boff, 0, thr_entry->stream, dB_csrOffsets, K, N );
-  CUDA_KERNEL_CALL( SetCsrColumns, nb_bcol, nt_bcol, 0, thr_entry->stream, dB_columns, K, N );
-
-  CUSPARSE_CALL( cusparseCreateCsr(&matB, K, N, K * N,
-                                    dB_csrOffsets, dB_columns, B->data,
+  // CUDA_KERNEL_CALL( SetCsrOffsets, nb_boff, nt_boff, 0, thr_entry->stream, dB_csrOffsets, K, N );
+  // CUDA_KERNEL_CALL( SetCsrColumns, nb_bcol, nt_bcol, 0, thr_entry->stream, dB_columns, K, N );
+  // CUSPARSE_CALL( cusparseCreateCsr(&matB, K, N, K * N,
+  //                                   dB_csrOffsets, dB_columns, B->data,
+  //                                   CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+  //                                   CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+  CUDA_KERNEL_CALL( SetCsrOffsets, nb_boff, nt_boff, 0, thr_entry->stream, dB_csrOffsets, K1, N1, K2, N2 );
+  CUDA_KERNEL_CALL( SetCsrColumns, nb_bcol, nt_bcol, 0, thr_entry->stream, dB_columns, K1, N1, K2, N2 );
+  CUDA_CALL( cudaMemcpy(dB_values, B1->data, K1 * N1 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  CUDA_CALL( cudaMemcpy(dB_values + K1 * N1, B2->data, K2 * N2 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  CUSPARSE_CALL( cusparseCreateCsr(&matB, K1 + K2, N1 + N2, matB_nnz,
+                                    dB_csrOffsets, dB_columns, dB_values,
                                     CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                                     CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+
   // Convert C into sparse matrix
-  CUSPARSE_CALL( cusparseCreateCsr(&matC, M, N, 0,
+  // CUSPARSE_CALL( cusparseCreateCsr(&matC, M, N, 0,
+  //                                   NULL, NULL, NULL,
+  //                                   CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+  //                                   CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+  CUSPARSE_CALL( cusparseCreateCsr(&matC, M1 + M2, N1 + N2, 0,
                                     NULL, NULL, NULL,
                                     CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                                     CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
@@ -428,19 +486,41 @@ void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int lda, i
                                  spgemmDesc, &bufferSize2, NULL) );
   CUDA_CALL( cudaMalloc((void**) &dBuffer2, bufferSize2) );
 
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spgemm_preproc = 0;
+  cudaEventElapsedTime(&spgemm_preproc, start, stop);
+
+  cudaEventRecord(start);
+#endif
   // compute the intermediate product of A * B
   CUSPARSE_CALL( cusparseSpGEMM_compute(thr_entry->cusparse_handle, opA, opB,
                                              &alpha, matA, matB, &beta, matC,
                                          CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT,
                                          spgemmDesc, &bufferSize2, dBuffer2) );
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spgemm_compute = 0;
+  cudaEventElapsedTime(&spgemm_compute, start, stop);
 
+  cudaEventRecord(start);
+#endif
   // allocate matrix C
   int *dC_csrOffsets, *dC_columns;
-  CUDA_CALL( cudaMalloc((void**) &dC_csrOffsets, (M + 1) * sizeof(int)) );
-  CUDA_CALL( cudaMalloc((void**) &dC_columns, M * N * sizeof(int))   ); 
+  float *dC_values;
+  // CUDA_CALL( cudaMalloc((void**) &dC_csrOffsets, (M + 1) * sizeof(int)) );
+  // CUDA_CALL( cudaMalloc((void**) &dC_columns, M * N * sizeof(int))   ); 
+  int matC_numrows = M1 + M2;
+  int matC_nnz = M1 * N1 + M2 * N2;
+  CUDA_CALL( cudaMalloc((void**) &dC_csrOffsets, (matC_numrows + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc((void**) &dC_columns, matC_nnz * sizeof(int))   ); 
+  CUDA_CALL( cudaMalloc((void**) &dC_values, matC_nnz * sizeof(float))   ); 
 
   // update matC with the new pointers
-  CUSPARSE_CALL( cusparseCsrSetPointers(matC, dC_csrOffsets, dC_columns, C->data) );
+  // CUSPARSE_CALL( cusparseCsrSetPointers(matC, dC_csrOffsets, dC_columns, C->data) );
+  CUSPARSE_CALL( cusparseCsrSetPointers(matC, dC_csrOffsets, dC_columns, dC_values) );
 
   // if beta != 0, cusparseSpGEMM_copy reuses/updates the values of dC_values
 
@@ -449,13 +529,29 @@ void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int lda, i
                           &alpha, matA, matB, &beta, matC,
                           CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc) );
 
+  // set C1 and C2's data to dC_values
+  // Q: could we just set C1->data and C2->data pointers instead of a memcpy, or would that be a mem leak?
+  CUDA_CALL( cudaMemcpy(C1->data, dC_values, M1 * N1 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  CUDA_CALL( cudaMemcpy(C2->data, dC_values + (M1 * N1), M2 * N2 * sizeof(float), cudaMemcpyDeviceToDevice) );
+
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spgemm_copy = 0;
+  cudaEventElapsedTime(&spgemm_copy, start, stop);
+
+  cudaEventRecord(start);
+#endif
   // destroy matrix/vector descriptors
   CUDA_CALL( cudaFree(dA_csrOffsets) );
   CUDA_CALL( cudaFree(dA_columns) );
+  CUDA_CALL( cudaFree(dA_values) );
   CUDA_CALL( cudaFree(dB_csrOffsets) );
   CUDA_CALL( cudaFree(dB_columns) );
+  CUDA_CALL( cudaFree(dB_values) );
   CUDA_CALL( cudaFree(dC_csrOffsets) );
   CUDA_CALL( cudaFree(dC_columns) );
+  CUDA_CALL( cudaFree(dC_values) );
   CUDA_CALL( cudaFree(dBuffer1) );
   CUDA_CALL( cudaFree(dBuffer2) );
 
@@ -464,6 +560,24 @@ void fused_gemm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int lda, i
   CUSPARSE_CALL( cusparseDestroySpMat(matB) );
   CUSPARSE_CALL( cusparseDestroySpMat(matC) );
 
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spgemm_destroy = 0;
+  cudaEventElapsedTime(&spgemm_destroy, start, stop);
+
+  cudaEventRecord(total_stop);
+  cudaEventSynchronize(total_stop);
+  float spgemm_total = 0;
+  cudaEventElapsedTime(&spgemm_total, total_start, total_stop);
+  
+  float spgemm_accum_time = spgemm_preproc + spgemm_compute + spgemm_copy + spgemm_destroy;
+  printf("spgemm_total: %f %f\n", spgemm_total, spgemm_accum_time / spgemm_total);
+  printf("spgemm_preproc: %f\n", spgemm_preproc);
+  printf("spgemm_compute: %f\n", spgemm_compute);
+  printf("spgemm_copy: %f\n", spgemm_copy);
+  printf("spgemm_destroy: %f\n", spgemm_destroy); fflush(stdout);
+#endif
 }
 
 /*!

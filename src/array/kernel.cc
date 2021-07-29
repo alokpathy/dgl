@@ -360,18 +360,24 @@ DGL_REGISTER_GLOBAL("sparse._CAPI_DGLCSRMask")
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMM")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {
-    NDArray A = args[0];
-    NDArray B = args[1];
-    NDArray C = args[2];
+    NDArray A1 = args[0];
+    NDArray B1 = args[1];
+    NDArray C1 = args[2];
 
-    int M = args[3];
-    int N = args[4];
-    int K = args[5];
+    int M1 = args[3];
+    int N1 = args[4];
+    int K1 = args[5];
 
-    int lda = args[6];
-    int ldb = args[7];
-    int ldc = args[8];
-    fused_gemm(A, B, C, M, N, K, lda, ldb, ldc);
+    NDArray A2 = args[6];
+    NDArray B2 = args[7];
+    NDArray C2 = args[8];
+
+    int M2 = args[9];
+    int N2 = args[10];
+    int K2 = args[11];
+
+    fused_gemm(A1, B1, C1, M1, N1, K1,
+                A2, B2, C2, M2, N2, K2);
   });
 
 #ifdef USE_TVM

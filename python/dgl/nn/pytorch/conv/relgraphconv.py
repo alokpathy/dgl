@@ -252,6 +252,8 @@ class RelGraphConv(nn.Module):
             msg = []
             bmm_time = 0.0
             dim_count = 0
+            
+            # matmul
             for etype in range(self.num_rels):
                 if h_t[etype].shape[0] == 0:
                     continue
@@ -260,16 +262,61 @@ class RelGraphConv(nn.Module):
                 # with th.cuda.amp.autocast():
                 dim_count += h_t[etype].numel() + weight[etype].numel()
                 # print(f"etype: {etype} h_t.size: {h_t[etype].size()} weight.size: {weight[etype].size()}")
-                # result = th.matmul(h_t[etype], weight[etype])
-                result = fused_gemm(h_t[etype], weight[etype])
+                print(f"h_t[etype].size: {h_t[etype].size()}")
+                print(f"weight[etype].size: {weight[etype].size()}")
+                result = th.matmul(h_t[etype], weight[etype])
+                print(f"etype: {etype} result: {result}")
                 msg.append(result)
                 bmm_time += stop_time(bmm_start, bmm_stop)
                 th.cuda.nvtx.range_pop()
+
+            # # fused gemm
+            # # need even numbered relati n types
+            # # for etype in range(self.num_rels):
+            # nonempty_rels = []
+            # for etype in range(self.num_rels):
+            #     if h_t[etype].shape[0] > 0:
+            #         nonempty_rels.append(etype)
+
+            # print(f"nonempty_rels: {nonempty_rels} len(nonempty_rels): {len(nonempty_rels)}", flush=True)
+            # for i in range(0, len(nonempty_rels), 2):
+            #     if i + 1 < len(nonempty_rels):
+            #         etype1 = nonempty_rels[i]
+            #         etype2 = nonempty_rels[i + 1]
+            #         print(f"etype1: {etype1} etype2: {etype2} num_rels: {self.num_rels}")
+            #         th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            #         start_time(bmm_start)
+            #         dim_count += h_t[etype1].numel() + weight[etype1].numel() + \
+            #                         h_t[etype2].numel() + weight[etype2].numel()
+            #         # with th.cuda.amp.autocast():
+            #         # result = th.matmul(h_t[etype], weight[etype])
+            #         result1, result2 = fused_gemm(h_t[etype1], weight[etype1], h_t[etype2], weight[etype2])
+            #         print(f"etype1: {etype1} result1: {result1}")
+            #         print(f"etype2: {etype2} result2: {result2}")
+            #         print(f"etype: {etype} result1.size: {result1.size()} result2.size: {result2.size()}")
+            #         msg.append(result1)
+            #         msg.append(result2)
+            #         bmm_time += stop_time(bmm_start, bmm_stop)
+            #         th.cuda.nvtx.range_pop()
+            #     else:
+            #         etype = nonempty_rels[i]
+            #         print(f"etype: {etype} num_rels: {self.num_rels}")
+            #         th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            #         start_time(bmm_start)
+            #         dim_count += h_t[etype].numel() + weight[etype].numel()
+            #         # with th.cuda.amp.autocast():
+            #         result = th.matmul(h_t[etype], weight[etype])
+            #         print(f"etype: {etype} result: {result}")
+            #         print(f"etype: {etype} result.size: {result.size()}")
+            #         msg.append(result)
+            #         bmm_time += stop_time(bmm_start, bmm_stop)
+            #         th.cuda.nvtx.range_pop()
+
             if timing:
-                print(f"bmm_time: {bmm_time} dim_count: {dim_count}")
+                print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)
             msg = th.cat(msg)
             th.cuda.nvtx.range_pop()
-            # print(f"msg.size: {msg.size()}")
+            print(f"msg.size: {msg.size()}")
         else:
             # Use batched matmult
             th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
