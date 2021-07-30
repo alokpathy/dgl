@@ -43,7 +43,6 @@ def lowmem_matmul(h_t, weight, num_rels):
         # with th.cuda.amp.autocast():
         dim_count += h_t[etype].numel() + weight[etype].numel()
         result = th.matmul(h_t[etype], weight[etype])
-        print(f"etype: {etype} result: {result}")
         msg.append(result)
         bmm_time += stop_time(bmm_start, bmm_stop)
         th.cuda.nvtx.range_pop()
@@ -164,8 +163,6 @@ def lowmem_fgemm_spmm(h_t, weight, num_rels):
             # with th.cuda.amp.autocast():
             # result = th.matmul(h_t[etype], weight[etype])
             result1, result2 = fused_gemm_spmm(h_t[etype1], weight[etype1], h_t[etype2], weight[etype2])
-            print(f"etype1: {etype1} result1: {result1}")
-            print(f"etype2: {etype2} result2: {result2}")
             msg.append(result1)
             msg.append(result2)
             bmm_time += stop_time(bmm_start, bmm_stop)
@@ -177,7 +174,6 @@ def lowmem_fgemm_spmm(h_t, weight, num_rels):
             dim_count += h_t[etype].numel() + weight[etype].numel()
             # with th.cuda.amp.autocast():
             result = th.matmul(h_t[etype], weight[etype])
-            print(f"etype: {etype} result: {result}")
             msg.append(result)
             bmm_time += stop_time(bmm_start, bmm_stop)
             th.cuda.nvtx.range_pop()
@@ -409,13 +405,13 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_matmul(h_t, weight, self.num_rels)
 
             # fused gemm with spgemm
-            # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
+            msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
 
             # fused gemm with larger gemm
             # msg, bmm_time, dim_count = lowmem_fgemm_gemm(h_t, weight, self.num_rels)
 
             # fused gemm with spmm
-            msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
 
             if timing:
                 print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)

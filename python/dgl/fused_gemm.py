@@ -121,8 +121,67 @@ class FusedGEMMSpMM(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dC1, dC2):
-        print("in custom backward")
-        return None, None, None, None
+        a1, b1, a2, b2 = ctx.saved_tensors
+        arg_dC1 = to_dgl_nd(dC1)
+        arg_dC2 = to_dgl_nd(dC2)
+
+        grad_a1 = grad_b1 = None
+        grad_a2 = grad_b2 = None
+
+        ctx_cuda = F.context(b1)
+        dtype = F.dtype(b1)
+
+        if ctx.needs_input_grad[0] and ctx.needs_input_grad[2]:
+            b1 = b1.t()
+            b2 = b2.t()
+            b = torch.cat((b1, b2), dim=0)
+            grad_a = F.zeros((dC1.size(0) + dC2.size(0), b1.size(1)), dtype, ctx_cuda).cuda()
+
+            arg_b = to_dgl_nd(b)
+
+            arg_grad_a = to_dgl_nd_for_write(grad_a)
+
+            # _CAPI_DGLKernelFGEMM(arg_dC1, arg_b1, arg_grad_a1, \
+            #                         dC1.size(0), dC1.size(1), b1.size(1), \
+            #                         arg_dC2, arg_b2, arg_grad_a2, \
+            #                         dC2.size(0), dC2.size(1), b2.size(1))
+
+            _CAPI_DGLKernelFGEMMSpMM(arg_dC1, arg_b, arg_grad_a, \
+                                        dC1.size(0), dC1.size(1), b.size(1), \
+                                        arg_dC2, \
+                                        dC2.size(0), dC2.size(1), b.size(1))
+        elif ctx.needs_input_grad[0]:
+            grad_a1 = torch.matmul(dC1, b1.t()).cuda()
+        elif ctx.needs_input_grad[2]:
+            grad_a2 = torch.matmul(dC2, b2.t()).cuda()
+
+        if ctx.needs_input_grad[1] and ctx.needs_input_grad[3]:
+            a1 = a1.t()
+            a2 = a2.t()
+            dC = torch.cat((dC1, dC2), dim=0)
+            grad_b = F.zeros((a1.size(0) + a2.size(0), dC1.size(1)), dtype, ctx_cuda).cuda()
+
+            arg_a1 = to_dgl_nd(a1)
+            arg_a2 = to_dgl_nd(a2)
+            arg_dC = to_dgl_nd(dC)
+
+            arg_grad_b = to_dgl_nd_for_write(grad_b)
+
+            # _CAPI_DGLKernelFGEMM(arg_a1, arg_dC1, arg_grad_b1, \
+            #                         a1.size(0), a1.size(1), dC1.size(1), \
+            #                         arg_a2, arg_dC2, arg_grad_b2, \
+            #                         a2.size(0), a2.size(1), dC2.size(1))
+
+            _CAPI_DGLKernelFGEMMSpMM(arg_a1, arg_dC, arg_grad_b, \
+                                        a1.size(0), a1.size(1), dC.size(1), \
+                                        arg_a2, \
+                                        a2.size(0), a2.size(1), dC.size(1))
+        elif ctx.needs_input_grad[1]:
+            grad_b1 = torch.matmul(a1, dC1).cuda()
+        elif ctx.needs_input_grad[3]:
+            grad_b2 = torch.matmul(a2, dC2).cuda()
+
+        return grad_a1, grad_b1, grad_a2, grad_b2
 
 def fused_gemm(a1, b1, a2, b2):
     return FusedGEMM.apply(a1, b1, a2, b2)

@@ -10,13 +10,18 @@
 #include "./functor.cuh"
 #include "../../runtime/cuda/cuda_common.h"
 
-// #define TIMING
+#define TIMING
 
 float spgemm_total = 0;
 float spgemm_preproc = 0;
 float spgemm_compute = 0;
 float spgemm_copy = 0;
 float spgemm_destroy = 0;
+
+float spmm_total = 0;
+float spmm_preproc = 0;
+float spmm_compute = 0;
+float spmm_destroy = 0;
 
 namespace dgl {
 
@@ -663,12 +668,32 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
                                CUSPARSE_SPMM_CSR_ALG2, &bufferSize) );
   CUDA_CALL( cudaMalloc(&dBuffer, bufferSize) );
 
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spmm_preproc_loc = 0;
+  cudaEventElapsedTime(&spmm_preproc_loc, start, stop);
+  spmm_preproc += spmm_preproc_loc;
+
+  cudaEventRecord(start);
+#endif
+
   // execute SpMM
   CUSPARSE_CALL( cusparseSpMM(thr_entry->cusparse_handle,
                                CUSPARSE_OPERATION_NON_TRANSPOSE,
                                CUSPARSE_OPERATION_NON_TRANSPOSE,
                                &alpha, matA, matB, &beta, matC, CUDA_R_32F,
                                CUSPARSE_SPMM_CSR_ALG2, dBuffer) );
+
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spmm_compute_loc = 0;
+  cudaEventElapsedTime(&spmm_compute_loc, start, stop);
+  spmm_compute += spmm_compute_loc;
+
+  cudaEventRecord(start);
+#endif
 
   // destroy matrix/vector descriptors
   CUDA_CALL( cudaFree(dA_csrOffsets) );
@@ -682,22 +707,21 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #ifdef TIMING
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
-  float spgemm_destroy_loc = 0;
-  cudaEventElapsedTime(&spgemm_destroy_loc, start, stop);
-  spgemm_destroy += spgemm_destroy_loc;
+  float spmm_destroy_loc = 0;
+  cudaEventElapsedTime(&spmm_destroy_loc, start, stop);
+  spmm_destroy += spmm_destroy_loc;
 
   cudaEventRecord(total_stop);
   cudaEventSynchronize(total_stop);
-  float spgemm_total_loc = 0;
-  cudaEventElapsedTime(&spgemm_total_loc, total_start, total_stop);
-  spgemm_total += spgemm_total_loc;
+  float spmm_total_loc = 0;
+  cudaEventElapsedTime(&spmm_total_loc, total_start, total_stop);
+  spmm_total += spmm_total_loc;
   
-  float spgemm_accum_time = spgemm_preproc + spgemm_compute + spgemm_copy + spgemm_destroy;
-  printf("spgemm_total: %f %f\n", spgemm_total, spgemm_accum_time / spgemm_total);
-  printf("spgemm_preproc: %f\n", spgemm_preproc);
-  printf("spgemm_compute: %f\n", spgemm_compute);
-  printf("spgemm_copy: %f\n", spgemm_copy);
-  printf("spgemm_destroy: %f\n", spgemm_destroy); fflush(stdout);
+  float spmm_accum_time = spmm_preproc + spmm_compute + spmm_destroy;
+  printf("spmm_total: %f %f\n", spmm_total, spmm_accum_time / spmm_total);
+  printf("spmm_preproc: %f\n", spmm_preproc);
+  printf("spmm_compute: %f\n", spmm_compute);
+  printf("spmm_destroy: %f\n", spmm_destroy); fflush(stdout);
 #endif
 }
 
