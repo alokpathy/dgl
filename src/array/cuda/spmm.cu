@@ -10,7 +10,13 @@
 #include "./functor.cuh"
 #include "../../runtime/cuda/cuda_common.h"
 
-#define TIMING
+// #define TIMING
+
+float spgemm_total = 0;
+float spgemm_preproc = 0;
+float spgemm_compute = 0;
+float spgemm_copy = 0;
+float spgemm_destroy = 0;
 
 namespace dgl {
 
@@ -489,8 +495,9 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #ifdef TIMING
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
-  float spgemm_preproc = 0;
-  cudaEventElapsedTime(&spgemm_preproc, start, stop);
+  float spgemm_preproc_loc = 0;
+  cudaEventElapsedTime(&spgemm_preproc_loc, start, stop);
+  spgemm_preproc += spgemm_preproc_loc;
 
   cudaEventRecord(start);
 #endif
@@ -502,8 +509,9 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #ifdef TIMING
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
-  float spgemm_compute = 0;
-  cudaEventElapsedTime(&spgemm_compute, start, stop);
+  float spgemm_compute_loc = 0;
+  cudaEventElapsedTime(&spgemm_compute_loc, start, stop);
+  spgemm_compute += spgemm_compute_loc;
 
   cudaEventRecord(start);
 #endif
@@ -537,8 +545,9 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #ifdef TIMING
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
-  float spgemm_copy = 0;
-  cudaEventElapsedTime(&spgemm_copy, start, stop);
+  float spgemm_copy_loc = 0;
+  cudaEventElapsedTime(&spgemm_copy_loc, start, stop);
+  spgemm_copy += spgemm_copy_loc;
 
   cudaEventRecord(start);
 #endif
@@ -563,13 +572,15 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #ifdef TIMING
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
-  float spgemm_destroy = 0;
-  cudaEventElapsedTime(&spgemm_destroy, start, stop);
+  float spgemm_destroy_loc = 0;
+  cudaEventElapsedTime(&spgemm_destroy_loc, start, stop);
+  spgemm_destroy += spgemm_destroy_loc;
 
   cudaEventRecord(total_stop);
   cudaEventSynchronize(total_stop);
-  float spgemm_total = 0;
-  cudaEventElapsedTime(&spgemm_total, total_start, total_stop);
+  float spgemm_total_loc = 0;
+  cudaEventElapsedTime(&spgemm_total_loc, total_start, total_stop);
+  spgemm_total += spgemm_total_loc;
   
   float spgemm_accum_time = spgemm_preproc + spgemm_compute + spgemm_copy + spgemm_destroy;
   printf("spgemm_total: %f %f\n", spgemm_total, spgemm_accum_time / spgemm_total);

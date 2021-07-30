@@ -19,6 +19,7 @@ class FusedGEMM(torch.autograd.Function):
         arg_a2 = to_dgl_nd(a2)
         arg_b2 = to_dgl_nd(b2)
 
+        # print(f"a1.size: {a1.size()} b1.size: {b1.size()}, a2.size: {a2.size()}, b2.size: {b2.size()}")
         ctx.save_for_backward(a1, b1, a2, b2)
 
         ctx_cuda = F.context(b1)
