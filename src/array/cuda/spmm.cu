@@ -10,7 +10,7 @@
 #include "./functor.cuh"
 #include "../../runtime/cuda/cuda_common.h"
 
-// #define TIMING
+#define TIMING
 
 namespace dgl {
 
