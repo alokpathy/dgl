@@ -92,7 +92,42 @@ class FusedGEMM(torch.autograd.Function):
 
         return grad_a1, grad_b1, grad_a2, grad_b2
 
+class FusedGEMMSpMM(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, a1, b1, a2, b2):
+        arg_a1 = to_dgl_nd(a1)
+        arg_a2 = to_dgl_nd(a2)
+
+        b = torch.cat((b1, b2), dim=0)
+        arg_b = to_dgl_nd(b)
+
+        # print(f"a1.size: {a1.size()} b1.size: {b1.size()}, a2.size: {a2.size()}, b2.size: {b2.size()}")
+        ctx.save_for_backward(a1, b1, a2, b2)
+
+        ctx_cuda = F.context(b1)
+        dtype = F.dtype(b1)
+        c = F.zeros((a1.size(0) + a2.size(0), b1.size(1)), dtype, ctx_cuda).cuda()
+
+        arg_c = to_dgl_nd_for_write(c)
+
+        _CAPI_DGLKernelFGEMMSpMM(arg_a1, arg_b, arg_c, \
+                                    a1.size(0), a1.size(1), b1.size(1), \
+                                    arg_a2, \
+                                    a2.size(0), a2.size(1), b2.size(1))
+        
+        c1 = c[:a1.size(0)]
+        c2 = c[a1.size(0):]
+        return c1, c2
+
+    @staticmethod
+    def backward(ctx, dC1, dC2):
+        print("in custom backward")
+        return None, None, None, None
+
 def fused_gemm(a1, b1, a2, b2):
     return FusedGEMM.apply(a1, b1, a2, b2)
+
+def fused_gemm_spmm(a1, b1, a2, b2):
+    return FusedGEMMSpMM.apply(a1, b1, a2, b2)
 
 _init_api("dgl.fused_gemm")

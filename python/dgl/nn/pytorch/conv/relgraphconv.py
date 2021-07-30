@@ -9,7 +9,7 @@ from .... import function as fn
 from .. import utils
 from ....base import DGLError
 from .... import edge_subgraph
-from ....fused_gemm import fused_gemm
+from ....fused_gemm import fused_gemm, fused_gemm_spmm
 
 import torch.autograd.profiler as profiler
 
@@ -43,6 +43,7 @@ def lowmem_matmul(h_t, weight, num_rels):
         # with th.cuda.amp.autocast():
         dim_count += h_t[etype].numel() + weight[etype].numel()
         result = th.matmul(h_t[etype], weight[etype])
+        print(f"etype: {etype} result: {result}")
         msg.append(result)
         bmm_time += stop_time(bmm_start, bmm_stop)
         th.cuda.nvtx.range_pop()
@@ -133,6 +134,50 @@ def lowmem_fgemm_gemm(h_t, weight, num_rels):
             dim_count += h_t[etype].numel() + weight[etype].numel()
             # with th.cuda.amp.autocast():
             result = th.matmul(h_t[etype], weight[etype])
+            msg.append(result)
+            bmm_time += stop_time(bmm_start, bmm_stop)
+            th.cuda.nvtx.range_pop()
+
+    return msg, bmm_time, dim_count
+
+def lowmem_fgemm_spmm(h_t, weight, num_rels):
+    bmm_start = th.cuda.Event(enable_timing=True)
+    bmm_stop = th.cuda.Event(enable_timing=True)
+
+    msg = []
+    bmm_time = 0.0
+    dim_count = 0
+
+    nonempty_rels = []
+    for etype in range(num_rels):
+        if h_t[etype].shape[0] > 0:
+            nonempty_rels.append(etype)
+
+    for i in range(0, len(nonempty_rels), 2):
+        if i + 1 < len(nonempty_rels):
+            etype1 = nonempty_rels[i]
+            etype2 = nonempty_rels[i + 1]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            start_time(bmm_start)
+            dim_count += h_t[etype1].numel() + weight[etype1].numel() + \
+                            h_t[etype2].numel() + weight[etype2].numel()
+            # with th.cuda.amp.autocast():
+            # result = th.matmul(h_t[etype], weight[etype])
+            result1, result2 = fused_gemm_spmm(h_t[etype1], weight[etype1], h_t[etype2], weight[etype2])
+            print(f"etype1: {etype1} result1: {result1}")
+            print(f"etype2: {etype2} result2: {result2}")
+            msg.append(result1)
+            msg.append(result2)
+            bmm_time += stop_time(bmm_start, bmm_stop)
+            th.cuda.nvtx.range_pop()
+        else:
+            etype = nonempty_rels[i]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            start_time(bmm_start)
+            dim_count += h_t[etype].numel() + weight[etype].numel()
+            # with th.cuda.amp.autocast():
+            result = th.matmul(h_t[etype], weight[etype])
+            print(f"etype: {etype} result: {result}")
             msg.append(result)
             bmm_time += stop_time(bmm_start, bmm_stop)
             th.cuda.nvtx.range_pop()
@@ -367,7 +412,10 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
 
             # fused gemm with larger gemm
-            msg, bmm_time, dim_count = lowmem_fgemm_gemm(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_fgemm_gemm(h_t, weight, self.num_rels)
+
+            # fused gemm with spmm
+            msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
 
             if timing:
                 print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)

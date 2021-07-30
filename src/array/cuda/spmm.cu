@@ -591,6 +591,116 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #endif
 }
 
+void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
+                        NDArray A2, int M2, int K2, int N2) {
+
+  auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
+
+#ifdef TIMING
+  cudaEvent_t total_start, total_stop;
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  cudaEventCreate(&total_start);
+  cudaEventCreate(&total_stop);
+
+  cudaEventRecord(total_start);
+#endif
+  cusparseSpMatDescr_t matA;
+  cusparseDnMatDescr_t matB, matC;
+  void*                dBuffer    = NULL;
+  size_t               bufferSize = 0;
+
+  // allocate cusparse handle if needed
+  if (!thr_entry->cusparse_handle) {
+    CUSPARSE_CALL(cusparseCreate(&(thr_entry->cusparse_handle)));
+  }
+
+#ifdef TIMING
+  cudaEventRecord(start);
+#endif
+  // Convert A into sparse matrix
+  int *dA_csrOffsets, *dA_columns;
+  float *dA_values;
+  int matA_numrows = M1 + M2;
+  int matA_nnz = M1 * K1 + M2 * K2;
+  CUDA_CALL( cudaMalloc(&dA_csrOffsets, (matA_numrows + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_columns, matA_nnz * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_values, matA_nnz * sizeof(float)) );
+
+  const int nt_aoff = FindNumThreads(matA_numrows + 1);
+  const int nb_aoff = (matA_numrows + 1 + nt_aoff - 1) / nt_aoff;
+
+  const int nt_acol = FindNumThreads(matA_nnz);
+  const int nb_acol = (matA_nnz + nt_acol - 1) / nt_acol;
+
+  CUDA_KERNEL_CALL( SetCsrOffsets, nb_aoff, nt_aoff, 0, thr_entry->stream, dA_csrOffsets, M1, K1, M2, K2 );
+  CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M1, K1, M2, K2 );
+  CUDA_CALL( cudaMemcpy(dA_values, A1->data, M1 * K1 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  CUDA_CALL( cudaMemcpy(dA_values + M1 * K1, A2->data, M2 * K2 * sizeof(float), cudaMemcpyDeviceToDevice) );
+
+  CUSPARSE_CALL( cusparseCreateCsr(&matA, M1 + M2, K1 + K2, matA_nnz,
+                                    dA_csrOffsets, dA_columns, dA_values,
+                                    CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                                    CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+
+  // Convert B into dense matrix
+  CUSPARSE_CALL( cusparseCreateDnMat(&matB, K1 + K2, N1, N1, B1->data,
+				      CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+
+  // Convert C into dense matrix
+  CUSPARSE_CALL( cusparseCreateDnMat(&matC, M1 + M2, N1, N1, C1->data,
+				      CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+
+  // allocate an external buffer if needed
+  float alpha           = 1.0f;
+  float beta            = 0.0f;
+  CUSPARSE_CALL( cusparseSpMM_bufferSize(
+                               thr_entry->cusparse_handle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, matA, matB, &beta, matC, CUDA_R_32F,
+                               CUSPARSE_SPMM_CSR_ALG2, &bufferSize) );
+  CUDA_CALL( cudaMalloc(&dBuffer, bufferSize) );
+
+  // execute SpMM
+  CUSPARSE_CALL( cusparseSpMM(thr_entry->cusparse_handle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, matA, matB, &beta, matC, CUDA_R_32F,
+                               CUSPARSE_SPMM_CSR_ALG2, dBuffer) );
+
+  // destroy matrix/vector descriptors
+  CUDA_CALL( cudaFree(dA_csrOffsets) );
+  CUDA_CALL( cudaFree(dA_columns) );
+  CUDA_CALL( cudaFree(dA_values) );
+  CUDA_CALL( cudaFree(dBuffer) );
+
+  CUSPARSE_CALL( cusparseDestroySpMat(matA) );
+  CUSPARSE_CALL( cusparseDestroyDnMat(matB) );
+  CUSPARSE_CALL( cusparseDestroyDnMat(matC) );
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spgemm_destroy_loc = 0;
+  cudaEventElapsedTime(&spgemm_destroy_loc, start, stop);
+  spgemm_destroy += spgemm_destroy_loc;
+
+  cudaEventRecord(total_stop);
+  cudaEventSynchronize(total_stop);
+  float spgemm_total_loc = 0;
+  cudaEventElapsedTime(&spgemm_total_loc, total_start, total_stop);
+  spgemm_total += spgemm_total_loc;
+  
+  float spgemm_accum_time = spgemm_preproc + spgemm_compute + spgemm_copy + spgemm_destroy;
+  printf("spgemm_total: %f %f\n", spgemm_total, spgemm_accum_time / spgemm_total);
+  printf("spgemm_preproc: %f\n", spgemm_preproc);
+  printf("spgemm_compute: %f\n", spgemm_compute);
+  printf("spgemm_copy: %f\n", spgemm_copy);
+  printf("spgemm_destroy: %f\n", spgemm_destroy); fflush(stdout);
+#endif
+}
+
 /*!
  * \brief CUDA implementation of g-SpMM on Csr format.
  * \note use cusparse if the reduce operator is `sum` and there is
