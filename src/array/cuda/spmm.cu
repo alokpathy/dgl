@@ -3,14 +3,14 @@
  * \file array/cuda/spmm.cu
  * \brief SPMM C APIs and definitions.
  */
-#include <cutlass/gemm/device/gemm.h>
 #include <dgl/array.h>
 #include "./spmm.cuh"
 #include "./ge_spmm.cuh"
 #include "./functor.cuh"
 #include "../../runtime/cuda/cuda_common.h"
+#include "nvToolsExt.h"
 
-#define TIMING
+// #define TIMING
 
 float spgemm_total = 0;
 float spgemm_preproc = 0;
@@ -373,14 +373,15 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
 
 #ifdef TIMING
-  cudaEvent_t total_start, total_stop;
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventCreate(&total_start);
-  cudaEventCreate(&total_stop);
+  // cudaEvent_t total_start, total_stop;
+  // cudaEvent_t start, stop;
+  // cudaEventCreate(&start);
+  // cudaEventCreate(&stop);
+  // cudaEventCreate(&total_start);
+  // cudaEventCreate(&total_stop);
 
-  cudaEventRecord(total_start);
+  // cudaEventRecord(total_start);
+  nvtxRangePushA("nvtx-spgemm");
 #endif
   cusparseSpMatDescr_t matA, matB, matC;
   void*  dBuffer1    = NULL, *dBuffer2   = NULL;
@@ -392,7 +393,8 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   }
 
 #ifdef TIMING
-  cudaEventRecord(start);
+  // cudaEventRecord(start);
+  nvtxRangePushA("nvtx-spgemm-preproc");
 #endif
   // Convert A into sparse matrix
   int *dA_csrOffsets, *dA_columns;
@@ -498,13 +500,15 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   CUDA_CALL( cudaMalloc((void**) &dBuffer2, bufferSize2) );
 
 #ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spgemm_preproc_loc = 0;
-  cudaEventElapsedTime(&spgemm_preproc_loc, start, stop);
-  spgemm_preproc += spgemm_preproc_loc;
+  // cudaEventRecord(stop);
+  // cudaEventSynchronize(stop);
+  // float spgemm_preproc_loc = 0;
+  // cudaEventElapsedTime(&spgemm_preproc_loc, start, stop);
+  // spgemm_preproc += spgemm_preproc_loc;
+  nvtxRangePop();
 
-  cudaEventRecord(start);
+  // cudaEventRecord(start);
+  nvtxRangePushA("nvtx-spgemm-compute");
 #endif
   // compute the intermediate product of A * B
   CUSPARSE_CALL( cusparseSpGEMM_compute(thr_entry->cusparse_handle, opA, opB,
@@ -512,13 +516,15 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
                                          CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT,
                                          spgemmDesc, &bufferSize2, dBuffer2) );
 #ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spgemm_compute_loc = 0;
-  cudaEventElapsedTime(&spgemm_compute_loc, start, stop);
-  spgemm_compute += spgemm_compute_loc;
+  // cudaEventRecord(stop);
+  // cudaEventSynchronize(stop);
+  // float spgemm_compute_loc = 0;
+  // cudaEventElapsedTime(&spgemm_compute_loc, start, stop);
+  // spgemm_compute += spgemm_compute_loc;
+  nvtxRangePop();
 
-  cudaEventRecord(start);
+  // cudaEventRecord(start);
+  nvtxRangePushA("nvtx-spgemm-copy");
 #endif
   // allocate matrix C
   int *dC_csrOffsets, *dC_columns;
@@ -548,13 +554,15 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   CUDA_CALL( cudaMemcpy(C2->data, dC_values + (M1 * N1), M2 * N2 * sizeof(float), cudaMemcpyDeviceToDevice) );
 
 #ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spgemm_copy_loc = 0;
-  cudaEventElapsedTime(&spgemm_copy_loc, start, stop);
-  spgemm_copy += spgemm_copy_loc;
+  // cudaEventRecord(stop);
+  // cudaEventSynchronize(stop);
+  // float spgemm_copy_loc = 0;
+  // cudaEventElapsedTime(&spgemm_copy_loc, start, stop);
+  // spgemm_copy += spgemm_copy_loc;
+  nvtxRangePop();
 
-  cudaEventRecord(start);
+  // cudaEventRecord(start);
+  nvtxRangePushA("nvtx-spgemm-destroy");
 #endif
   // destroy matrix/vector descriptors
   CUDA_CALL( cudaFree(dA_csrOffsets) );
@@ -575,24 +583,26 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   CUSPARSE_CALL( cusparseDestroySpMat(matC) );
 
 #ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spgemm_destroy_loc = 0;
-  cudaEventElapsedTime(&spgemm_destroy_loc, start, stop);
-  spgemm_destroy += spgemm_destroy_loc;
+  // cudaEventRecord(stop);
+  // cudaEventSynchronize(stop);
+  // float spgemm_destroy_loc = 0;
+  // cudaEventElapsedTime(&spgemm_destroy_loc, start, stop);
+  // spgemm_destroy += spgemm_destroy_loc;
+  nvtxRangePop();
 
-  cudaEventRecord(total_stop);
-  cudaEventSynchronize(total_stop);
-  float spgemm_total_loc = 0;
-  cudaEventElapsedTime(&spgemm_total_loc, total_start, total_stop);
-  spgemm_total += spgemm_total_loc;
-  
-  float spgemm_accum_time = spgemm_preproc + spgemm_compute + spgemm_copy + spgemm_destroy;
-  printf("spgemm_total: %f %f\n", spgemm_total, spgemm_accum_time / spgemm_total);
-  printf("spgemm_preproc: %f\n", spgemm_preproc);
-  printf("spgemm_compute: %f\n", spgemm_compute);
-  printf("spgemm_copy: %f\n", spgemm_copy);
-  printf("spgemm_destroy: %f\n", spgemm_destroy); fflush(stdout);
+  // cudaEventRecord(total_stop);
+  // cudaEventSynchronize(total_stop);
+  // float spgemm_total_loc = 0;
+  // cudaEventElapsedTime(&spgemm_total_loc, total_start, total_stop);
+  // spgemm_total += spgemm_total_loc;
+  // 
+  // float spgemm_accum_time = spgemm_preproc + spgemm_compute + spgemm_copy + spgemm_destroy;
+  // printf("spgemm_total: %f %f\n", spgemm_total, spgemm_accum_time / spgemm_total);
+  // printf("spgemm_preproc: %f\n", spgemm_preproc);
+  // printf("spgemm_compute: %f\n", spgemm_compute);
+  // printf("spgemm_copy: %f\n", spgemm_copy);
+  // printf("spgemm_destroy: %f\n", spgemm_destroy); fflush(stdout);
+  nvtxRangePop();
 #endif
 }
 
@@ -610,6 +620,7 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   cudaEventCreate(&total_stop);
 
   cudaEventRecord(total_start);
+  // nvtxRangePushA("nvtx-spmm-total");
 #endif
   cusparseSpMatDescr_t matA;
   cusparseDnMatDescr_t matB, matC;
@@ -623,6 +634,7 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 
 #ifdef TIMING
   cudaEventRecord(start);
+  // nvtxRangePushA("nvtx-spmm-preproc");
 #endif
   // Convert A into sparse matrix
   int *dA_csrOffsets, *dA_columns;
@@ -674,8 +686,10 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   float spmm_preproc_loc = 0;
   cudaEventElapsedTime(&spmm_preproc_loc, start, stop);
   spmm_preproc += spmm_preproc_loc;
+  // nvtxRangePop();
 
   cudaEventRecord(start);
+  // nvtxRangePushA("nvtx-spmm-compute");
 #endif
 
   // execute SpMM
@@ -691,8 +705,10 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   float spmm_compute_loc = 0;
   cudaEventElapsedTime(&spmm_compute_loc, start, stop);
   spmm_compute += spmm_compute_loc;
+  // nvtxRangePop();
 
   cudaEventRecord(start);
+  // nvtxRangePushA("nvtx-spmm-destroy");
 #endif
 
   // destroy matrix/vector descriptors
@@ -710,12 +726,14 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   float spmm_destroy_loc = 0;
   cudaEventElapsedTime(&spmm_destroy_loc, start, stop);
   spmm_destroy += spmm_destroy_loc;
+  // nvtxRangePop();
 
   cudaEventRecord(total_stop);
   cudaEventSynchronize(total_stop);
   float spmm_total_loc = 0;
   cudaEventElapsedTime(&spmm_total_loc, total_start, total_stop);
   spmm_total += spmm_total_loc;
+  // nvtxRangePop();
   
   float spmm_accum_time = spmm_preproc + spmm_compute + spmm_destroy;
   printf("spmm_total: %f %f\n", spmm_total, spmm_accum_time / spmm_total);

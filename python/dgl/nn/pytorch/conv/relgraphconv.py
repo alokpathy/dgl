@@ -13,7 +13,7 @@ from ....fused_gemm import fused_gemm, fused_gemm_spmm
 
 import torch.autograd.profiler as profiler
 
-timing = True
+timing = False
 
 def start_time(timer):
     if timing:
@@ -66,7 +66,7 @@ def lowmem_fgemm_spgemm(h_t, weight, num_rels):
         if i + 1 < len(nonempty_rels):
             etype1 = nonempty_rels[i]
             etype2 = nonempty_rels[i + 1]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-type{}-type{}".format(etype1, etype2))
             start_time(bmm_start)
             dim_count += h_t[etype1].numel() + weight[etype1].numel() + \
                             h_t[etype2].numel() + weight[etype2].numel()
@@ -107,7 +107,7 @@ def lowmem_fgemm_gemm(h_t, weight, num_rels):
         if i + 1 < len(nonempty_rels):
             etype1 = nonempty_rels[i]
             etype2 = nonempty_rels[i + 1]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-type{}-type{}".format(etype1, etype2))
             start_time(bmm_start)
             dim_count += h_t[etype1].numel() + weight[etype1].numel() + \
                             h_t[etype2].numel() + weight[etype2].numel()
@@ -128,7 +128,7 @@ def lowmem_fgemm_gemm(h_t, weight, num_rels):
             th.cuda.nvtx.range_pop()
         else:
             etype = nonempty_rels[i]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-type{}-type{}".format(etype1, etype2))
             start_time(bmm_start)
             dim_count += h_t[etype].numel() + weight[etype].numel()
             # with th.cuda.amp.autocast():
@@ -156,7 +156,7 @@ def lowmem_fgemm_spmm(h_t, weight, num_rels):
         if i + 1 < len(nonempty_rels):
             etype1 = nonempty_rels[i]
             etype2 = nonempty_rels[i + 1]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-type{}-type{}".format(etype1, etype2))
             start_time(bmm_start)
             dim_count += h_t[etype1].numel() + weight[etype1].numel() + \
                             h_t[etype2].numel() + weight[etype2].numel()
@@ -405,13 +405,13 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_matmul(h_t, weight, self.num_rels)
 
             # fused gemm with spgemm
-            msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
 
             # fused gemm with larger gemm
             # msg, bmm_time, dim_count = lowmem_fgemm_gemm(h_t, weight, self.num_rels)
 
             # fused gemm with spmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
+            msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
 
             if timing:
                 print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)
@@ -419,6 +419,9 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_pop()
             print(f"msg.size: {msg.size()}")
         else:
+            bmm_start = th.cuda.Event(enable_timing=True)
+            bmm_stop = th.cuda.Event(enable_timing=True)
+
             # Use batched matmult
             th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
             if isinstance(etypes, list):

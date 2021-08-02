@@ -11,6 +11,22 @@ def to_dgl_nd_for_write(x):
     """Convert framework-specific tensor/None to dgl ndarray for write."""
     return nd.NULL['int32'] if x is None else F.zerocopy_to_dgl_ndarray_for_write(x)
 
+timing = False
+
+def start_time(timer):
+    if timing:
+        timer.record()
+
+def stop_time(start_timer, stop_timer):
+    if timing:
+        stop_timer.record()
+        torch.cuda.synchronize()
+        return start_timer.elapsed_time(stop_timer)
+    else:
+        return 0.0
+
+preproc_time = 0.0
+
 class FusedGEMM(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a1, b1, a2, b2):
@@ -95,6 +111,12 @@ class FusedGEMM(torch.autograd.Function):
 class FusedGEMMSpMM(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a1, b1, a2, b2):
+        global preproc_time
+
+        preproc_start = torch.cuda.Event(enable_timing=True)
+        preproc_stop = torch.cuda.Event(enable_timing=True)
+
+        start_time(preproc_start)
         arg_a1 = to_dgl_nd(a1)
         arg_a2 = to_dgl_nd(a2)
 
@@ -109,6 +131,7 @@ class FusedGEMMSpMM(torch.autograd.Function):
         c = F.zeros((a1.size(0) + a2.size(0), b1.size(1)), dtype, ctx_cuda).cuda()
 
         arg_c = to_dgl_nd_for_write(c)
+        preproc_time += stop_time(preproc_start, preproc_stop)
 
         _CAPI_DGLKernelFGEMMSpMM(arg_a1, arg_b, arg_c, \
                                     a1.size(0), a1.size(1), b1.size(1), \
@@ -117,6 +140,10 @@ class FusedGEMMSpMM(torch.autograd.Function):
         
         c1 = c[:a1.size(0)]
         c2 = c[a1.size(0):]
+
+        if timing:
+            print(f"preproc_time: {preproc_time}")
+
         return c1, c2
 
     @staticmethod
