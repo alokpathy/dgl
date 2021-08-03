@@ -366,6 +366,14 @@ __global__ void SetCsrColumns(int *columns, int M1, int N1, int M2, int N2) {
   }
 }
 
+__global__ void SetEllColumns(int *columns, int M1, int N1, int M2, int N2) {
+  int     id = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  
+  columns[0] = 0;
+  columns[1] = 1;
+}
+
 // TODO: template this with generic DType
 void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
                     NDArray A2, NDArray B2, NDArray C2, int M2, int K2, int N2) {
@@ -716,6 +724,151 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   CUDA_CALL( cudaFree(dA_columns) );
   CUDA_CALL( cudaFree(dA_values) );
   CUDA_CALL( cudaFree(dBuffer) );
+
+  CUSPARSE_CALL( cusparseDestroySpMat(matA) );
+  CUSPARSE_CALL( cusparseDestroyDnMat(matB) );
+  CUSPARSE_CALL( cusparseDestroyDnMat(matC) );
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spmm_destroy_loc = 0;
+  cudaEventElapsedTime(&spmm_destroy_loc, start, stop);
+  spmm_destroy += spmm_destroy_loc;
+  // nvtxRangePop();
+
+  cudaEventRecord(total_stop);
+  cudaEventSynchronize(total_stop);
+  float spmm_total_loc = 0;
+  cudaEventElapsedTime(&spmm_total_loc, total_start, total_stop);
+  spmm_total += spmm_total_loc;
+  // nvtxRangePop();
+  
+  float spmm_accum_time = spmm_preproc + spmm_compute + spmm_destroy;
+  printf("spmm_total: %f %f\n", spmm_total, spmm_accum_time / spmm_total);
+  printf("spmm_preproc: %f\n", spmm_preproc);
+  printf("spmm_compute: %f\n", spmm_compute);
+  printf("spmm_destroy: %f\n", spmm_destroy); fflush(stdout);
+#endif
+}
+
+void fused_gemm_blockspmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
+                            NDArray A2, int M2, int K2, int N2) {
+
+  auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
+
+#ifdef TIMING
+  cudaEvent_t total_start, total_stop;
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  cudaEventCreate(&total_start);
+  cudaEventCreate(&total_stop);
+
+  cudaEventRecord(total_start);
+  // nvtxRangePushA("nvtx-spmm-total");
+#endif
+  cusparseSpMatDescr_t matA;
+  cusparseDnMatDescr_t matB, matC;
+  void*                dBuffer    = NULL;
+  size_t               bufferSize = 0;
+
+  // allocate cusparse handle if needed
+  if (!thr_entry->cusparse_handle) {
+    CUSPARSE_CALL(cusparseCreate(&(thr_entry->cusparse_handle)));
+  }
+
+#ifdef TIMING
+  cudaEventRecord(start);
+  // nvtxRangePushA("nvtx-spmm-preproc");
+#endif
+  // Convert A into sparse matrix
+  int *dA_colind;
+  __half *dA_values;
+  int matA_numrows = M1 + M2;
+  int matA_numcols = K1 + K2;
+  int matA_nnz = M1 * K1 + M2 * K2;
+  int matA_blocksize = M1;
+  int matA_ellcols = matA_blocksize;
+  CUDA_CALL( cudaMalloc(&dA_colind, (matA_numrows / matA_blocksize) * (matA_ellcols / matA_blocksize) * 
+                            sizeof(int)) ); // should just be length 2 for now
+  CUDA_CALL( cudaMalloc(&dA_values, matA_nnz * sizeof(__half)) );
+
+  const int nt_acol = FindNumThreads(matA_numrows + 1);
+  const int nb_acol = ((matA_numrows / M1)  + nt_acol - 1) / nt_acol;
+
+  const int nt_aval = FindNumThreads(matA_nnz);
+  const int nb_aval = (matA_nnz + nt_aval - 1) / nt_aval;
+
+  CUDA_KERNEL_CALL( SetEllColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_colind, M1, K1, M2, K2 );
+  // CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M1, K1, M2, K2 );
+  CUDA_CALL( cudaMemcpy(dA_values, A1->data, M1 * K1 * sizeof(__half), cudaMemcpyDeviceToDevice) );
+  CUDA_CALL( cudaMemcpy(dA_values + M1 * K1, A2->data, M2 * K2 * sizeof(__half), cudaMemcpyDeviceToDevice) );
+
+  CUSPARSE_CALL( cusparseCreateBlockedEll(&matA,
+                                    matA_numrows, matA_numcols, matA_blocksize,
+                                    matA_ellcols, dA_colind, dA_values,
+                                    CUSPARSE_INDEX_32I,
+                                    // CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
+                                    CUSPARSE_INDEX_BASE_ZERO, CUDA_R_16F) );
+
+  // Convert B into dense matrix
+  CUSPARSE_CALL( cusparseCreateDnMat(&matB, K1 + K2, N1, N1, B1->data,
+				      // CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+				      CUDA_R_16F, CUSPARSE_ORDER_ROW) );
+
+  // Convert C into dense matrix
+  CUSPARSE_CALL( cusparseCreateDnMat(&matC, M1 + M2, N1, N1, C1->data,
+				      CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+				      // CUDA_R_16F, CUSPARSE_ORDER_ROW) );
+
+  // allocate an external buffer if needed
+  float alpha           = 1.0f;
+  float beta            = 0.0f;
+  CUSPARSE_CALL( cusparseSpMM_bufferSize(
+                               thr_entry->cusparse_handle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, matA, matB, &beta, matC, CUDA_R_32F,
+                               // &alpha, matA, matB, &beta, matC, CUDA_R_16F,
+                               CUSPARSE_SPMM_ALG_DEFAULT, &bufferSize) );
+  CUDA_CALL( cudaMalloc(&dBuffer, bufferSize) );
+
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spmm_preproc_loc = 0;
+  cudaEventElapsedTime(&spmm_preproc_loc, start, stop);
+  spmm_preproc += spmm_preproc_loc;
+  // nvtxRangePop();
+
+  cudaEventRecord(start);
+  // nvtxRangePushA("nvtx-spmm-compute");
+#endif
+
+  // execute SpMM
+  CUSPARSE_CALL( cusparseSpMM(thr_entry->cusparse_handle,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, matA, matB, &beta, matC, CUDA_R_32F,
+                               // &alpha, matA, matB, &beta, matC, CUDA_R_16F,
+                               CUSPARSE_SPMM_ALG_DEFAULT, dBuffer) );
+
+#ifdef TIMING
+  cudaEventRecord(stop);
+  cudaEventSynchronize(stop);
+  float spmm_compute_loc = 0;
+  cudaEventElapsedTime(&spmm_compute_loc, start, stop);
+  spmm_compute += spmm_compute_loc;
+  // nvtxRangePop();
+
+  cudaEventRecord(start);
+  // nvtxRangePushA("nvtx-spmm-destroy");
+#endif
+
+  // destroy matrix/vector descriptors
+  CUDA_CALL( cudaFree(dBuffer) );
+  CUDA_CALL( cudaFree(dA_values) );
+  CUDA_CALL( cudaFree(dA_colind) );
 
   CUSPARSE_CALL( cusparseDestroySpMat(matA) );
   CUSPARSE_CALL( cusparseDestroyDnMat(matB) );

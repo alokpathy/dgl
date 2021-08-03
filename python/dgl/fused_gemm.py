@@ -210,10 +210,156 @@ class FusedGEMMSpMM(torch.autograd.Function):
 
         return grad_a1, grad_b1, grad_a2, grad_b2
 
+class FusedGEMMBlockSpMM(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, a1, b1, a2, b2):
+        global preproc_time
+
+        preproc_start = torch.cuda.Event(enable_timing=True)
+        preproc_stop = torch.cuda.Event(enable_timing=True)
+
+        a1_pad = a1
+        a2_pad = a2
+
+        b1_pad = b1
+        b2_pad = b2
+
+        block_dim = max(a1.size(0), a1.size(1), a2.size(0), a2.size(1))
+
+        # zero-pad A matrix height
+        if a1.size(0) < block_dim:
+            padding = block_dim - a1.size(0)
+            a1_pad = torch.cat((a1_pad, torch.Tensor(padding, a1_pad.size(1)).cuda().fill_(0)))
+
+        if a2.size(0) < block_dim:
+            padding = block_dim - a2.size(0)
+            a2_pad = torch.cat((a2_pad, torch.Tensor(padding, a2_pad.size(1)).cuda().fill_(0)))
+
+        # zero-pad A matrix width / B matrix height
+        if a1.size(1) < block_dim:
+            padding = block_dim - a1.size(1)
+            a1_pad = torch.cat((a1_pad, torch.Tensor(a1_pad.size(0), padding).cuda().fill_(0)), dim=1)
+            b1_pad = torch.cat((b1_pad, torch.Tensor(padding, b1_pad.size(1)).cuda().fill_(0)), dim=0)
+
+        if a2.size(1) < block_dim:
+            padding = block_dim - a2.size(1)
+            a2_pad = torch.cat((a2_pad, torch.Tensor(a2_pad.size(0), padding).cuda().fill_(0)), dim=1)
+            b2_pad = torch.cat((b2_pad, torch.Tensor(padding, b2_pad.size(1)).cuda().fill_(0)), dim=0)
+
+        ctx.save_for_backward(a1_pad, b1_pad, a2_pad, b2_pad)
+
+        a1_pad = a1_pad.half()
+        a2_pad = a2_pad.half()
+
+        start_time(preproc_start)
+        arg_a1_pad = to_dgl_nd(a1_pad)
+        arg_a2_pad = to_dgl_nd(a2_pad)
+
+        b_pad = torch.cat((b1_pad, b2_pad), dim=0)
+        b_pad = b_pad.half()
+        arg_b_pad = to_dgl_nd(b_pad)
+
+        ctx_cuda = F.context(b1)
+        dtype = F.dtype(b1_pad)
+        c = F.zeros((a1_pad.size(0) + a2_pad.size(0), b1_pad.size(1)), dtype, ctx_cuda).cuda()
+
+        arg_c = to_dgl_nd_for_write(c)
+        preproc_time += stop_time(preproc_start, preproc_stop)
+
+        _CAPI_DGLKernelFGEMMBlockSpMM(arg_a1_pad, arg_b_pad, arg_c, \
+                                        a1_pad.size(0), a1_pad.size(1), b1_pad.size(1), \
+                                        arg_a2_pad, \
+                                        a2_pad.size(0), a2_pad.size(1), b2_pad.size(1))
+        
+        a1_pad = a1_pad.float()
+        a2_pad = a2_pad.float()
+        b_pad = b_pad.float()
+
+        c1 = c[:a1_pad.size(0)]
+        c2 = c[a1_pad.size(0):]
+
+        c1 = c1[:a1.size(0), :a1.size(1)]
+        c2 = c2[:a2.size(0), :a2.size(1)]
+
+        if timing:
+            print(f"preproc_time: {preproc_time}")
+
+        return c1, c2
+
+    @staticmethod
+    def backward(ctx, dC1, dC2):
+        print("in custom backward")
+        a1, b1, a2, b2 = ctx.saved_tensors
+        arg_dC1 = to_dgl_nd(dC1)
+        arg_dC2 = to_dgl_nd(dC2)
+
+        grad_a1 = grad_b1 = None
+        grad_a2 = grad_b2 = None
+
+        ctx_cuda = F.context(b1)
+        dtype = F.dtype(b1)
+
+        block_dim = max(a1.size(0), a1.size(1), a2.size(0), a2.size(1))
+
+        if ctx.needs_input_grad[0] and ctx.needs_input_grad[2]:
+            b1 = b1.t()
+            b2 = b2.t()
+            b = torch.cat((b1, b2), dim=0)
+            grad_a = F.zeros((dC1.size(0) + dC2.size(0), b1.size(1)), dtype, ctx_cuda).cuda()
+
+            arg_b = to_dgl_nd(b)
+
+            arg_grad_a = to_dgl_nd_for_write(grad_a)
+
+            # _CAPI_DGLKernelFGEMM(arg_dC1, arg_b1, arg_grad_a1, \
+            #                         dC1.size(0), dC1.size(1), b1.size(1), \
+            #                         arg_dC2, arg_b2, arg_grad_a2, \
+            #                         dC2.size(0), dC2.size(1), b2.size(1))
+
+            _CAPI_DGLKernelFGEMMBlockSpMM(arg_dC1, arg_b, arg_grad_a, \
+                                            dC1.size(0), dC1.size(1), b.size(1), \
+                                            arg_dC2, \
+                                            dC2.size(0), dC2.size(1), b.size(1))
+        elif ctx.needs_input_grad[0]:
+            grad_a1 = torch.matmul(dC1, b1.t()).cuda()
+        elif ctx.needs_input_grad[2]:
+            grad_a2 = torch.matmul(dC2, b2.t()).cuda()
+
+        if ctx.needs_input_grad[1] and ctx.needs_input_grad[3]:
+            a1 = a1.t()
+            a2 = a2.t()
+            dC = torch.cat((dC1, dC2), dim=0)
+            grad_b = F.zeros((a1.size(0) + a2.size(0), dC1.size(1)), dtype, ctx_cuda).cuda()
+
+            arg_a1 = to_dgl_nd(a1)
+            arg_a2 = to_dgl_nd(a2)
+            arg_dC = to_dgl_nd(dC)
+
+            arg_grad_b = to_dgl_nd_for_write(grad_b)
+
+            # _CAPI_DGLKernelFGEMM(arg_a1, arg_dC1, arg_grad_b1, \
+            #                         a1.size(0), a1.size(1), dC1.size(1), \
+            #                         arg_a2, arg_dC2, arg_grad_b2, \
+            #                         a2.size(0), a2.size(1), dC2.size(1))
+
+            _CAPI_DGLKernelFGEMMBlockSpMM(arg_a1, arg_dC, arg_grad_b, \
+                                            a1.size(0), a1.size(1), dC.size(1), \
+                                            arg_a2, \
+                                            a2.size(0), a2.size(1), dC.size(1))
+        elif ctx.needs_input_grad[1]:
+            grad_b1 = torch.matmul(a1, dC1).cuda()
+        elif ctx.needs_input_grad[3]:
+            grad_b2 = torch.matmul(a2, dC2).cuda()
+
+        return grad_a1, grad_b1, grad_a2, grad_b2
+
 def fused_gemm(a1, b1, a2, b2):
     return FusedGEMM.apply(a1, b1, a2, b2)
 
 def fused_gemm_spmm(a1, b1, a2, b2):
     return FusedGEMMSpMM.apply(a1, b1, a2, b2)
+
+def fused_gemm_blockspmm(a1, b1, a2, b2):
+    return FusedGEMMBlockSpMM.apply(a1, b1, a2, b2)
 
 _init_api("dgl.fused_gemm")

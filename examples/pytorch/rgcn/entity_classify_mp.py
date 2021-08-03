@@ -116,7 +116,7 @@ class EntityClassify(nn.Module):
             blocks = [self.g] * len(self.layers)
         h = feats
         for layer, block in zip(self.layers, blocks):
-            if epoch == 0 and step == 1:
+            if epoch == 0 and step == 0:
                 print(f"block: {block} h.size: {h.size()}", flush=True)
                 # with profiler.profile(use_cuda=True) as prof:
                 #     with profiler.record_function("rf-blockcopy"):

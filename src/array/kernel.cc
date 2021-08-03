@@ -400,6 +400,26 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMSpMM")
                         A2, M2, N2, K2);
   });
 
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMBlockSpMM")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+    NDArray A1 = args[0];
+    NDArray B1 = args[1];
+    NDArray C1 = args[2];
+
+    int M1 = args[3];
+    int N1 = args[4];
+    int K1 = args[5];
+
+    NDArray A2 = args[6];
+
+    int M2 = args[7];
+    int N2 = args[8];
+    int K2 = args[9];
+
+    fused_gemm_blockspmm(A1, B1, C1, M1, N1, K1,
+                            A2, M2, N2, K2);
+  });
+
 #ifdef USE_TVM
 DGL_REGISTER_GLOBAL("sparse._CAPI_FG_LoadModule")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {

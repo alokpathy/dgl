@@ -24,6 +24,9 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int N1, int K1,
 void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int N1, int K1,
                         NDArray A2, int M2, int N2, int K2);
 
+void fused_gemm_blockspmm(NDArray A1, NDArray B1, NDArray C1, int M1, int N1, int K1,
+                            NDArray A2, int M2, int N2, int K2);
+
 /*!
  * \brief Generalized Sparse Matrix Dense Matrix Multiplication on Csr format.
  */
