@@ -43,7 +43,6 @@ def lowmem_matmul(h_t, weight, num_rels):
         # with th.cuda.amp.autocast():
         dim_count += h_t[etype].numel() + weight[etype].numel()
         result = th.matmul(h_t[etype], weight[etype])
-        print(f"etype: {etype} result: {result}")
         msg.append(result)
         bmm_time += stop_time(bmm_start, bmm_stop)
         th.cuda.nvtx.range_pop()
@@ -457,10 +456,10 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_gemm(h_t, weight, self.num_rels)
 
             # fused gemm with spmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
+            msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
 
             # fused gemm with block spmm
-            msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h_t, weight, self.num_rels)
 
             if timing:
                 print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)
