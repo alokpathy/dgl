@@ -347,6 +347,7 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
     do_test = False
     if n_gpus > 1 and n_cpus - args.num_workers > 0:
         th.set_num_threads(n_cpus-args.num_workers)
+
     for epoch in range(args.n_epochs):
         tstart = time.time()
         model.train()
@@ -376,9 +377,11 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
             forward_time.append(t1 - t0)
             backward_time.append(t2 - t1)
             train_acc = th.sum(logits.argmax(dim=1) == labels[seeds]).item() / len(seeds)
-            if i % 100 and proc_id == 0:
-                print("Train Accuracy: {:.4f} | Train Loss: {:.4f}".
-                    format(train_acc, loss.item()))
+            # if i % 100 and proc_id == 0:
+            if proc_id == 0:
+                print("Train Accuracy: {:.4f} | Train Loss: {:.4f} | Step {}".
+                    format(train_acc, loss.item(), i))
+
         gc.collect()
         print("Epoch {:05d}:{:05d} | Train Forward Time(s) {:.4f} | Backward Time(s) {:.4f}".
             format(epoch, args.n_epochs, forward_time[-1], backward_time[-1]))

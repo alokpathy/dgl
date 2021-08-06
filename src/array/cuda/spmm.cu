@@ -818,8 +818,8 @@ void fused_gemm_blockspmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, in
 
   // Convert C into dense matrix
   CUSPARSE_CALL( cusparseCreateDnMat(&matC, M1 + M2, N1, N1, C1->data,
-				      CUDA_R_32F, CUSPARSE_ORDER_ROW) );
-				      // CUDA_R_16F, CUSPARSE_ORDER_ROW) );
+				      // CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+				      CUDA_R_16F, CUSPARSE_ORDER_ROW) );
 
   // allocate an external buffer if needed
   float alpha           = 1.0f;
