@@ -47,15 +47,7 @@ class BaseRGCN(nn.Module):
 
     def forward(self, g, h, r, norm, epoch=0):
         for layer in self.layers:
-            if epoch == 2:
-                th.cuda.profiler.cudart().cudaProfilerStart()
-                th.cuda.nvtx.range_push("nvtx-layer")
-                h = layer(g, h, r, norm)
-                th.cuda.nvtx.range_pop()
-                th.cuda.profiler.cudart().cudaProfilerStop()
-                exit()
-            else:
-                h = layer(g, h, r, norm)
+            h = layer(g, h, r, norm, epoch_fwd=epoch)
         return h
 
 def initializer(emb):

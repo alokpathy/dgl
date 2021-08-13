@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import random
+import dgl
 from dgl.data.knowledge_graph import load_data
 from dgl.nn.pytorch import RelGraphConv
 
@@ -24,12 +25,16 @@ from model import BaseRGCN
 
 import utils
 
+np.random.seed(0)
+torch.manual_seed(0)
+dgl.random.seed(0)
+
 class EmbeddingLayer(nn.Module):
     def __init__(self, num_nodes, h_dim):
         super(EmbeddingLayer, self).__init__()
         self.embedding = torch.nn.Embedding(num_nodes, h_dim)
 
-    def forward(self, g, h, r, norm):
+    def forward(self, g, h, r, norm, epoch_fwd=0):
         return self.embedding(h.squeeze())
 
 class RGCN(BaseRGCN):
@@ -39,7 +44,8 @@ class RGCN(BaseRGCN):
     def build_hidden_layer(self, idx):
         act = F.relu if idx < self.num_hidden_layers - 1 else None
         return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "bdd",
-                self.num_bases, activation=act, self_loop=True,
+        # return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
+                self.num_bases, activation=act, self_loop=True, low_mem=True,
                 dropout=self.dropout)
 
 class LinkPredict(nn.Module):
@@ -61,8 +67,18 @@ class LinkPredict(nn.Module):
         score = torch.sum(s * r * o, dim=1)
         return score
 
-    def forward(self, g, h, r, norm):
-        return self.rgcn.forward(g, h, r, norm)
+    def forward(self, g, h, r, norm, epoch=0):
+        # return self.rgcn.forward(g, h, r, norm)
+        if epoch == 1:
+            torch.cuda.profiler.cudart().cudaProfilerStart()
+            torch.cuda.nvtx.range_push("nvtx-layer")
+            # self.rgcn.forward(g, h, r, norm)
+            self.rgcn.forward(g, h, r, norm, epoch=epoch)
+            torch.cuda.nvtx.range_pop()
+            torch.cuda.profiler.cudart().cudaProfilerStop()
+            exit()
+        else:
+            return self.rgcn.forward(g, h, r, norm)
 
     def regularization_loss(self, embedding):
         return torch.mean(embedding.pow(2)) + torch.mean(self.w_relation.pow(2))
@@ -162,7 +178,7 @@ def main(args):
             g = g.to(args.gpu)
 
         t0 = time.time()
-        embed = model(g, node_id, edge_type, edge_norm)
+        embed = model(g, node_id, edge_type, edge_norm, epoch=epoch)
         loss = model.get_loss(g, embed, data, labels)
         t1 = time.time()
         loss.backward()

@@ -21,6 +21,7 @@ from dgl import DGLGraph
 from functools import partial
 
 from dgl.data.rdf import AIFBDataset, MUTAGDataset, BGSDataset, AMDataset
+from dgl.data.knowledge_graph import load_data
 from model import RelGraphEmbedLayer
 from dgl.nn import RelGraphConv
 import tqdm
@@ -28,9 +29,23 @@ import tqdm
 from ogb.nodeproppred import DglNodePropPredDataset
 import torch.autograd.profiler as profiler
 
+timing = False
+
 np.random.seed(0)
 th.manual_seed(0)
 dgl.random.seed(0)
+
+def start_time(timer):
+    if timing:
+        timer.record()
+
+def stop_time(start_timer, stop_timer):
+    if timing:
+        stop_timer.record()
+        th.cuda.synchronize()
+        return start_timer.elapsed_time(stop_timer)
+    else:
+        return 0.0
 
 class EntityClassify(nn.Module):
     """ Entity classification class for RGCN
@@ -116,20 +131,24 @@ class EntityClassify(nn.Module):
             blocks = [self.g] * len(self.layers)
         h = feats
         for layer, block in zip(self.layers, blocks):
-            if epoch == 0 and step == 5:
+            if epoch == 4 and step == 1:
                 print(f"block: {block} h.size: {h.size()}", flush=True)
-                # with profiler.profile(use_cuda=True) as prof:
-                #     with profiler.record_function("rf-blockcopy"):
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-blockcopy")
                 block = block.to(self.device)
                 th.cuda.nvtx.range_pop()
-                #     with profiler.record_function("rf-layer"):
+
+                layer_start = th.cuda.Event(enable_timing=True)
+                layer_stop = th.cuda.Event(enable_timing=True)
+                
                 th.cuda.nvtx.range_push("nvtx-layer")
+                start_time(layer_start)
                 h = layer(block, h, block.edata['etype'], block.edata['norm'])
+                layer_time = stop_time(layer_start, layer_stop)
                 th.cuda.nvtx.range_pop()
                 th.cuda.profiler.cudart().cudaProfilerStop()
-                # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
+                print(f"layer_time: {layer_time}")
+               
                 exit() 
             else:
                 block = block.to(self.device)
@@ -382,6 +401,10 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
                 print("Train Accuracy: {:.4f} | Train Loss: {:.4f} | Step {}".
                     format(train_acc, loss.item(), i))
 
+            if i == 50:
+                print(f"train_time: {time.time() - tstart}")
+                exit()
+
         gc.collect()
         print("Epoch {:05d}:{:05d} | Train Forward Time(s) {:.4f} | Backward Time(s) {:.4f}".
             format(epoch, args.n_epochs, forward_time[-1], backward_time[-1]))
@@ -456,7 +479,7 @@ def run(proc_id, n_gpus, n_cpus, args, devices, dataset, split, queue=None):
     print("{}/{} Mean backward time: {:4f}".format(proc_id, n_gpus,
                                                    np.mean(backward_time[len(backward_time) // 4:])))
     if proc_id == 0:
-        print("Final Test Accuracy: {:.4f} | Test loss: {:.4f}".format(test_acc, test_loss))
+        # print("Final Test Accuracy: {:.4f} | Test loss: {:.4f}".format(test_acc, test_loss))
         print("Train {}s, valid {}s, test {}s".format(train_time, validation_time, test_time))
 
 def main(args, devices):
@@ -473,6 +496,13 @@ def main(args, devices):
     elif args.dataset == 'ogbn-mag':
         dataset = DglNodePropPredDataset(name=args.dataset)
         ogb_dataset = True
+    elif args.dataset == "FB15k":
+        dataset = load_data(args.dataset)
+        num_nodes = dataset.num_nodes
+        train_data = dataset.train
+        valid_data = dataset.valid
+        test_data = dataset.test
+        num_rels = dataset.num_rels
     else:
         raise ValueError()
 
@@ -493,6 +523,7 @@ def main(args, devices):
 
         num_rels = len(hg.canonical_etypes)
         num_of_ntype = len(hg.ntypes)
+        print(f"ntypes: {hg.ntypes}")
         num_classes = dataset.num_classes
         if args.dataset == 'ogbn-mag':
             category = 'paper'

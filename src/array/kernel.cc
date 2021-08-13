@@ -14,6 +14,8 @@
 #include "../c_api_common.h"
 #include "./check.h"
 
+#include "nvToolsExt.h"
+
 using namespace dgl::runtime;
 
 namespace dgl {
@@ -402,22 +404,84 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMSpMM")
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMBlockSpMM")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {
-    NDArray A1 = args[0];
-    NDArray B1 = args[1];
-    NDArray C1 = args[2];
+    NDArray A = args[0];
+    NDArray B = args[1];
+    NDArray C = args[2];
 
-    int M1 = args[3];
-    int N1 = args[4];
-    int K1 = args[5];
+    int M = args[3];
+    int K = args[4];
+    int N = args[5];
+    int block_dim = args[6];
 
-    NDArray A2 = args[6];
+    fused_gemm_blockspmm(A, B, C, M, K, N, block_dim);
+  });
 
-    int M2 = args[7];
-    int N2 = args[8];
-    int K2 = args[9];
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelCAPIGEMMs")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+    // List<Value> A_mats_refs = args[0];
+    // List<Value> B_mats_refs = args[1];
+    // List<Value> C_mats_refs = args[2];
 
-    fused_gemm_blockspmm(A1, B1, C1, M1, N1, K1,
-                            A2, M2, N2, K2);
+    // List<Value> A_mats_rows_refs = args[3];
+
+    // int middim = args[4];
+    // int outcol = args[5];
+
+    // std::vector<NDArray> A_mats = ListValueToVector<NDArray>(A_mats_refs);
+    // std::vector<NDArray> B_mats = ListValueToVector<NDArray>(B_mats_refs);
+    // std::vector<NDArray> C_mats = ListValueToVector<NDArray>(C_mats_refs);
+
+    // std::vector<int> A_mats_rows = ListValueToVector<int>(A_mats_rows_refs);
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray A_mats = args[0];
+    NDArray B_mats = args[1];
+    NDArray C_mats = args[2];
+
+    // List<Value> A_mats_rows_refs = args[3];
+    NDArray A_mats_rows = args[3];
+
+    int middim = args[4];
+    int outcol = args[5];
+    int num_rels = args[6];
+    int total_edges = args[7];
+
+    // std::vector<int> A_mats_rows = ListValueToVector<int>(A_mats_rows_refs);
+    nvtxRangePop();
+
+    capi_gemms(A_mats, B_mats, C_mats, A_mats_rows, middim, outcol, num_rels, total_edges);
+  });
+
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadA")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray A3D = args[0];
+    NDArray A_mats = args[1];
+    NDArray A_mats_rows = args[2];
+
+    int dim0 = args[3];
+    int dim1 = args[4];
+    int dim2 = args[5];
+    nvtxRangePop();
+
+    pad_a(A3D, A_mats, A_mats_rows, dim0, dim1, dim2);
+  });
+
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelUnpadC")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray C3D = args[0];
+    NDArray C_mats = args[1];
+    NDArray C_mats_rows = args[2];
+
+    int dim0 = args[3];
+    int dim1 = args[4];
+    int dim2 = args[5];
+    nvtxRangePop();
+
+    unpad_c(C3D, C_mats, C_mats_rows, dim0, dim1, dim2);
   });
 
 #ifdef USE_TVM
