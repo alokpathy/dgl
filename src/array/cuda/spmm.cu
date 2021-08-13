@@ -887,31 +887,13 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, int M, int K, int N, 
 #endif
 }
 
-// void capi_gemms(std::vector<NDArray> A_mats, std::vector<NDArray> B_mats, std::vector<NDArray> C_mats, 
-//                     std::vector<int> A_mats_rows, int middim, int outcol) {}
 void capi_gemms(NDArray A_mats, NDArray B_mats, NDArray C_mats, 
                         NDArray A_mats_rows, int middim, int outcol, int num_rels, int total_edges) {
-                        // std::vector<int> A_mats_rows, int middim, int outcol) {}
 
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
 
   if (!thr_entry->cublas_handle)
     CUBLAS_CALL(cublasCreate(&(thr_entry->cublas_handle)));
-
-  // // GEMM operation
-  // const float alpha = 1;
-  // const float beta = 0;
-  // for (int i = 0; i < A_mats.size(); i++) {
-  //   CUBLAS_CALL(cublasSgemm(
-  //       thr_entry->cublas_handle,
-  //       CUBLAS_OP_N, CUBLAS_OP_N,
-  //       outcol, A_mats_rows[i], middim,          // transposed because cublas only supports column-major
-  //       &alpha, 
-  //       (const float*) B_mats[i]->data, outcol,
-  //       (const float*) A_mats[i]->data, middim,
-  //       &beta, 
-  //       (float*) C_mats[i]->data, outcol));
-  // } 
 
   // GEMM operation
   const float alpha = 1;
@@ -929,7 +911,7 @@ void capi_gemms(NDArray A_mats, NDArray B_mats, NDArray C_mats,
     CUBLAS_CALL(cublasSgemm(
         thr_entry->cublas_handle,
         CUBLAS_OP_N, CUBLAS_OP_N,
-        outcol, A_mats_rows_ptr[i], middim,          // transposed because cublas only supports column-major
+        outcol, A_mats_rows_ptr[i], middim,       // transposed because cublas only supports column-major
         &alpha, 
         (const float*) (B_ptr + i * middim * outcol), outcol,
         (const float*) (A_ptr + row_count * middim), middim,
