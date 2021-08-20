@@ -384,22 +384,18 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMM")
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMSpMM")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {
-    NDArray A1 = args[0];
-    NDArray B1 = args[1];
-    NDArray C1 = args[2];
+    NDArray A = args[0];
+    NDArray B = args[1];
+    NDArray C = args[2];
+    NDArray A_mats_rows = args[3];
+    NDArray dA_csrOffsets = args[4];
+    NDArray dA_columns = args[5];
 
-    int M1 = args[3];
-    int N1 = args[4];
-    int K1 = args[5];
+    int M = args[6];
+    int K = args[7];
+    int N = args[8];
 
-    NDArray A2 = args[6];
-
-    int M2 = args[7];
-    int N2 = args[8];
-    int K2 = args[9];
-
-    fused_gemm_spmm(A1, B1, C1, M1, N1, K1,
-                        A2, M2, N2, K2);
+    fused_gemm_spmm(A, B, C, A_mats_rows, dA_csrOffsets, dA_columns, M, K, N);
   });
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMBlockSpMM")
@@ -407,13 +403,15 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelFGEMMBlockSpMM")
     NDArray A = args[0];
     NDArray B = args[1];
     NDArray C = args[2];
+    NDArray A_mats_rows = args[3];
 
-    int M = args[3];
-    int K = args[4];
-    int N = args[5];
-    int block_dim = args[6];
+    int M = args[4];
+    int K = args[5];
+    int N = args[6];
+    int block_dim = args[7];
+    int num_rels = args[8];
 
-    fused_gemm_blockspmm(A, B, C, M, K, N, block_dim);
+    fused_gemm_blockspmm(A, B, C, A_mats_rows, M, K, N, block_dim, num_rels);
   });
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelCAPIGEMMs")
@@ -450,6 +448,7 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelCAPIGEMMs")
     nvtxRangePop();
 
     capi_gemms(A_mats, B_mats, C_mats, A_mats_rows, middim, outcol, num_rels, total_edges);
+    // capi_gemms_half(A_mats, B_mats, C_mats, A_mats_rows, middim, outcol, num_rels, total_edges);
   });
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadA")
@@ -468,6 +467,22 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadA")
     pad_a(A3D, A_mats, A_mats_rows, dim0, dim1, dim2);
   });
 
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadA2D")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray A_pad = args[0];
+    NDArray A_mats = args[1];
+    NDArray A_mats_rows = args[2];
+
+    int dim0 = args[3];
+    int dim1 = args[4];
+    int num_rels = args[5];
+    nvtxRangePop();
+
+    pad_a2d(A_pad, A_mats, A_mats_rows, dim0, dim1, num_rels);
+  });
+
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelUnpadC")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {
 
@@ -482,6 +497,22 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelUnpadC")
     nvtxRangePop();
 
     unpad_c(C3D, C_mats, C_mats_rows, dim0, dim1, dim2);
+  });
+
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelUnpadC2D")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray C_mats = args[0];
+    NDArray C_pad = args[1];
+    NDArray C_mats_rows = args[2];
+
+    int dim0 = args[3];
+    int dim1 = args[4];
+    int num_rels = args[5];
+    nvtxRangePop();
+
+    unpad_c2d(C_mats, C_pad, C_mats_rows, dim0, dim1, num_rels);
   });
 
 #ifdef USE_TVM

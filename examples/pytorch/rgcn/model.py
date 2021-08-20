@@ -2,6 +2,21 @@ import torch as th
 import torch.nn as nn
 
 import dgl
+from dgl.nn.pytorch import RelGraphConv
+
+timing = True
+
+def start_time(timer):
+    if timing:
+        timer.record()
+
+def stop_time(start_timer, stop_timer):
+    if timing:
+        stop_timer.record()
+        th.cuda.synchronize()
+        return start_timer.elapsed_time(stop_timer)
+    else:
+        return 0.0
 
 class BaseRGCN(nn.Module):
     def __init__(self, num_nodes, h_dim, out_dim, num_rels, num_bases,
@@ -46,8 +61,25 @@ class BaseRGCN(nn.Module):
         return None
 
     def forward(self, g, h, r, norm, epoch=0):
-        for layer in self.layers:
-            h = layer(g, h, r, norm, epoch_fwd=epoch)
+        layer_start = th.cuda.Event(enable_timing=True)
+        layer_stop = th.cuda.Event(enable_timing=True)
+
+        for i, layer in enumerate(self.layers):
+            if epoch == 5 and i == 1: # 5th epoch and first RelGraphConv layer
+                th.cuda.profiler.cudart().cudaProfilerStart()
+                th.cuda.nvtx.range_push("nvtx-layer")
+
+                start_time(layer_start)
+                h = layer(g, h, r, norm, epoch_fwd=epoch)
+                layer_time = stop_time(layer_start, layer_stop)
+
+                th.cuda.nvtx.range_pop()
+                th.cuda.profiler.cudart().cudaProfilerStop()
+
+                print(f"layer_time: {layer_time}")
+                exit()
+            else:
+                h = layer(g, h, r, norm, epoch_fwd=epoch)
         return h
 
 def initializer(emb):

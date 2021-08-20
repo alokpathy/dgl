@@ -147,18 +147,18 @@ def bdd_lowmem_fgemm_batchmm(h_t, weight, num_rels, num_bases, submat_in, submat
             # etypes = nonempty_rels[i:(i + merge_count)]
             th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(etypes)))
 
-            # for j in etypes:
-            #     elem_count += h_t[j].numel() + weight[j].numel()
-
-            # with th.cuda.amp.autocast():
             th.cuda.nvtx.range_push("nvtx-mergew")
-            # weight_merged = [weight[j] for j in etypes]
             weight_merged = th.index_select(weight.data, 0, nonempty_rels)
             th.cuda.nvtx.range_pop()
-            th.cuda.nvtx.range_push("nvtx-mergeh")
+
+            th.cuda.nvtx.range_push("nvtx-nonemptyrels-cpu")
             nonempty_rels = nonempty_rels.cpu()
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-mergeh")
             h_t_merged = [h_t[j] for j in nonempty_rels]
             th.cuda.nvtx.range_pop()
+
             results = fused_gemm_batchmm(h_t_merged, weight_merged, etypes)
             msg.append(results)
             th.cuda.nvtx.range_pop()
@@ -176,29 +176,88 @@ def bdd_lowmem_fgemm_batchmm(h_t, weight, num_rels, num_bases, submat_in, submat
 
     return results, edge_count, elem_count
 
-def bdd_lowmem_fgemm_blockspmm(h_t, weight, num_rels, num_bases, submat_in, submat_out, out_feat):
+def bdd_lowmem_fgemm_spmm(h, weight, num_rels, num_bases, submat_in, submat_out, out_feat, \
+                                    nonempty_rels, etypes):
+
     edge_count = 0
     elem_count = 0
 
     msg = []
-    nonempty_rels = []
-    for etype in range(num_rels):
-        if h_t[etype].shape[0] > 0:
-            nonempty_rels.append(etype)
-
-    merge_count = len(nonempty_rels)
+    merge_count = nonempty_rels.size(0)
     for i in range(0, len(nonempty_rels), merge_count):
-        if i + (merge_count - 1) < len(nonempty_rels):
-            etypes = nonempty_rels[i:(i + merge_count)]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(etypes)))
+        if i + (merge_count - 1) < nonempty_rels.size(0):
+            # etypes = nonempty_rels[i:(i + merge_count)]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(nonempty_rels)))
 
-            for j in etypes:
-                elem_count += h_t[j].numel() + weight[j].numel()
+            # for j in etypes:
+            #     elem_count += h_t[j].numel() + weight[j].numel()
 
             # with th.cuda.amp.autocast():
-            h_t_merged = [h_t[j] for j in etypes]
-            weight_merged = [weight[j] for j in etypes]
-            results = fused_gemm_blockspmm(h_t_merged, weight_merged)
+            # h_t_merged = [h_t[j] for j in nonempty_rels]
+            # weight_merged = [weight[j] for j in nonempty_rels]
+
+            th.cuda.nvtx.range_push("nvtx-mergew")
+            # weight_merged = [weight[j] for j in etypes]
+            weight_merged = th.index_select(weight.data, 0, nonempty_rels)
+            th.cuda.nvtx.range_pop()
+
+            # th.cuda.nvtx.range_push("nvtx-nonemptyrels-cpu")
+            # nonempty_rels = nonempty_rels.cpu()
+            # th.cuda.nvtx.range_pop()
+
+            # th.cuda.nvtx.range_push("nvtx-mergeh")
+            # print(f"type(h_t): {type(h_t)}")
+            # h_t_merged = [h_t[j] for j in nonempty_rels]
+            # th.cuda.nvtx.range_pop()
+
+            # results = fused_gemm_spmm(h_t_merged, weight_merged, etypes)
+            results = fused_gemm_spmm(h, weight_merged, etypes)
+            msg.append(results)
+            th.cuda.nvtx.range_pop()
+        else:
+            for j in range(i, len(nonempty_rels)):
+                etype = nonempty_rels[j]
+                th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+                start_time(bmm_start)
+                dim_count += h_t[etype].numel() + weight[etype].numel()
+                # with th.cuda.amp.autocast():
+                result = th.matmul(h_t[etype], weight[etype])
+                # print(f"etype: {etype} result: {result}")
+                msg.append(result)
+                th.cuda.nvtx.range_pop()
+
+    return results, edge_count, elem_count
+
+def bdd_lowmem_fgemm_blockspmm(h_t, weight, num_rels, num_bases, submat_in, submat_out, out_feat, \
+                                    nonempty_rels, etypes):
+
+    edge_count = 0
+    elem_count = 0
+
+    msg = []
+    merge_count = nonempty_rels.size(0)
+    for i in range(0, len(nonempty_rels), merge_count):
+        if i + (merge_count - 1) < nonempty_rels.size(0):
+            # etypes = nonempty_rels[i:(i + merge_count)]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(nonempty_rels)))
+
+            # for j in etypes:
+            #     elem_count += h_t[j].numel() + weight[j].numel()
+
+            # with th.cuda.amp.autocast():
+            # h_t_merged = [h_t[j] for j in nonempty_rels]
+            # weight_merged = [weight[j] for j in nonempty_rels]
+
+            th.cuda.nvtx.range_push("nvtx-mergew")
+            # weight_merged = [weight[j] for j in etypes]
+            weight_merged = th.index_select(weight.data, 0, nonempty_rels)
+            th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_push("nvtx-mergeh")
+            nonempty_rels = nonempty_rels.cpu()
+            h_t_merged = [h_t[j] for j in nonempty_rels]
+            th.cuda.nvtx.range_pop()
+
+            results = fused_gemm_blockspmm(h_t_merged, weight_merged, etypes)
             msg.append(results)
             th.cuda.nvtx.range_pop()
         else:
@@ -239,26 +298,34 @@ def lowmem_matmul(h_t, weight, num_rels):
 
     return msg, bmm_time, dim_count
 
-def lowmem_capi_matmul(h_t, weight, num_rels):
-    bmm_start = th.cuda.Event(enable_timing=True)
-    bmm_stop = th.cuda.Event(enable_timing=True)
-
-    msg = []
-    bmm_time = 0.0
-    dim_count = 0
+def lowmem_capi_matmul(h_t, weight, num_rels, nonempty_rels, etypes):
+    edge_count = 0
+    elem_count = 0
 
     th.cuda.nvtx.range_push("nvtx-capigemms-preproc")
-    nonempty_rels = []
-    for etype in range(num_rels):
-        if h_t[etype].shape[0] > 0:
-            nonempty_rels.append(etype)
+    # th.cuda.nvtx.range_push("nvtx-preproc-nonemptyrels")
+    # nonempty_rels = []
+    # for etype in range(num_rels):
+    #     if h_t[etype].shape[0] > 0:
+    #         edge_count += h_t[etype].shape[0]
+    #         nonempty_rels.append(etype)
+    # th.cuda.nvtx.range_pop()
 
-    h_t_merged = [h_t[j] for j in nonempty_rels]
-    weight_merged = [weight[j] for j in nonempty_rels]
+    th.cuda.nvtx.range_push("nvtx-preproc-mergew")
+    # weight_merged = [(weight.data)[j] for j in nonempty_rels]
+    # weight_merged = th.tensor_split(weight.data, weight.data.size(0), dim=0)
+    # weight_merged = [weight_merged[j].squeeze(0) for j in nonempty_rels]
+    weight_merged = th.index_select(weight.data, 0, nonempty_rels)
     th.cuda.nvtx.range_pop()
-    results = capi_gemms(h_t_merged, weight_merged)
 
-    return results, bmm_time, dim_count
+    th.cuda.nvtx.range_push("nvtx-preproc-mergeh")
+    nonempty_rels = nonempty_rels.cpu()
+    h_t_merged = [h_t[j] for j in nonempty_rels]
+    th.cuda.nvtx.range_pop()
+    th.cuda.nvtx.range_pop()
+    results = capi_gemms(h_t_merged, weight_merged, etypes)
+
+    return results, edge_count, elem_count
 
 def lowmem_fgemm_spgemm(h_t, weight, num_rels):
     bmm_start = th.cuda.Event(enable_timing=True)
@@ -350,149 +417,42 @@ def lowmem_fgemm_gemm(h_t, weight, num_rels):
 
     return msg, bmm_time, dim_count
 
-def lowmem_fgemm_spmm(h_t, weight, num_rels):
-    bmm_start = th.cuda.Event(enable_timing=True)
-    bmm_stop = th.cuda.Event(enable_timing=True)
+def lowmem_fgemm_spmm(h, weight, num_rels, nonempty_rels, etypes):
+    edge_count = 0
+    elem_count = 0
 
     msg = []
-    bmm_time = 0.0
-    dim_count = 0
-
-    nonempty_rels = []
-    for etype in range(num_rels):
-        if h_t[etype].shape[0] > 0:
-            nonempty_rels.append(etype)
-
-    for i in range(0, len(nonempty_rels), 2):
-        if i + 1 < len(nonempty_rels):
-            etype1 = nonempty_rels[i]
-            etype2 = nonempty_rels[i + 1]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-type{}-type{}".format(etype1, etype2))
-            start_time(bmm_start)
-            dim_count += h_t[etype1].numel() + weight[etype1].numel() + \
-                            h_t[etype2].numel() + weight[etype2].numel()
-            # with th.cuda.amp.autocast():
-            # result = th.matmul(h_t[etype], weight[etype])
-            result1, result2 = fused_gemm_spmm(h_t[etype1], weight[etype1], h_t[etype2], weight[etype2])
-            msg.append(result1)
-            msg.append(result2)
-            bmm_time += stop_time(bmm_start, bmm_stop)
-            th.cuda.nvtx.range_pop()
-        else:
-            etype = nonempty_rels[i]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
-            start_time(bmm_start)
-            dim_count += h_t[etype].numel() + weight[etype].numel()
-            # with th.cuda.amp.autocast():
-            result = th.matmul(h_t[etype], weight[etype])
-            msg.append(result)
-            bmm_time += stop_time(bmm_start, bmm_stop)
-            th.cuda.nvtx.range_pop()
-
-    return msg, bmm_time, dim_count
-
-def lowmem_fgemm_blockspmm(h_t, weight, num_rels):
-    bmm_start = th.cuda.Event(enable_timing=True)
-    bmm_stop = th.cuda.Event(enable_timing=True)
-
-    msg = []
-    bmm_time = 0.0
-    dim_count = 0
-
-    nonempty_rels = []
-    shapes = []
-    for etype in range(num_rels):
-        if h_t[etype].shape[0] > 0:
-            nonempty_rels.append(etype)
-            shapes.append(h_t[etype].shape[0])
-
-    merge_count = len(nonempty_rels)
+    merge_count = nonempty_rels.size(0)
     for i in range(0, len(nonempty_rels), merge_count):
-        if i + (merge_count - 1) < len(nonempty_rels):
-            etypes = nonempty_rels[i:(i + merge_count)]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(etypes)))
-            start_time(bmm_start)
+        if i + (merge_count - 1) < nonempty_rels.size(0):
+            # etypes = nonempty_rels[i:(i + merge_count)]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(nonempty_rels)))
 
-            for j in etypes:
-                dim_count += h_t[j].numel() + weight[j].numel()
+            # for j in etypes:
+            #     elem_count += h_t[j].numel() + weight[j].numel()
 
             # with th.cuda.amp.autocast():
-            # result = th.matmul(h_t[etype], weight[etype])
-            h_t_merged = [h_t[j] for j in etypes]
-            weight_merged = [weight[j] for j in etypes]
-            results = fused_gemm_blockspmm(h_t_merged, weight_merged)
-            # msg.append(result1)
-            # msg.append(result2)
-            msg.append(results)
-            bmm_time += stop_time(bmm_start, bmm_stop)
-            th.cuda.nvtx.range_pop()
-        else:
-            etype = nonempty_rels[i]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
-            start_time(bmm_start)
-            dim_count += h_t[etype].numel() + weight[etype].numel()
-            # with th.cuda.amp.autocast():
-            result = th.matmul(h_t[etype], weight[etype])
-            # print(f"etype: {etype} result: {result}")
-            msg.append(result)
-            bmm_time += stop_time(bmm_start, bmm_stop)
+            # h_t_merged = [h_t[j] for j in nonempty_rels]
+            # weight_merged = [weight[j] for j in nonempty_rels]
+
+            th.cuda.nvtx.range_push("nvtx-mergew")
+            # weight_merged = [weight[j] for j in etypes]
+            weight_merged = th.index_select(weight.data, 0, nonempty_rels)
+            weight_merged = weight_merged.view(-1, weight.data.size(2))
             th.cuda.nvtx.range_pop()
 
-    return msg, bmm_time, dim_count
+            # th.cuda.nvtx.range_push("nvtx-nonemptyrels-cpu")
+            # nonempty_rels = nonempty_rels.cpu()
+            # th.cuda.nvtx.range_pop()
 
-def lowmem_fgemm_batchmm(h_t, weight, num_rels):
-    bmm_start = th.cuda.Event(enable_timing=True)
-    bmm_stop = th.cuda.Event(enable_timing=True)
+            # th.cuda.nvtx.range_push("nvtx-mergeh")
+            # print(f"type(h_t): {type(h_t)}")
+            # h_t_merged = [h_t[j] for j in nonempty_rels]
+            # th.cuda.nvtx.range_pop()
 
-    msg = []
-    bmm_time = 0.0
-    dim_count = 0
-
-    nonempty_rels = []
-    for etype in range(num_rels):
-        if h_t[etype].shape[0] > 0:
-            nonempty_rels.append(etype)
-
-    # th.cuda.nvtx.range_push("nvtx-preproc-indices")
-    # nonempty_rels.sort(key=lambda x: h_t[x].shape[0])
-    # shape_diffs = []
-    # for i in range(1, len(nonempty_rels)):
-    #     shape_diffs.append(h_t[nonempty_rels[i]].shape[0] - h_t[nonempty_rels[i - 1]].shape[0])
-
-    # max_diffs_indices = sorted(range(len(shape_diffs)), reverse=True, key=lambda k: shape_diffs[k])
-    # bmm_count = 4
-    # etype_cutoffs = sorted(max_diffs_indices[:bmm_count])
-    # etype_cutoffs = [x + 1 for x in etype_cutoffs]
-    # etype_cutoffs = [0] + etype_cutoffs
-    # th.cuda.nvtx.range_pop()
-    merge_count = len(nonempty_rels)
-    for i in range(0, len(nonempty_rels), merge_count):
-    # for i in range(len(etype_cutoffs)):
-        if i + (merge_count - 1) < len(nonempty_rels):
-            # if i == len(etype_cutoffs) - 1:
-            #     etype_start = etype_cutoffs[i]
-            #     etype_end = len(nonempty_rels)
-            # else:
-            #     etype_start = etype_cutoffs[i]
-            #     etype_end = etype_cutoffs[i + 1]
-
-            # if etype_start == etype_end:
-            #     continue
-
-            etypes = nonempty_rels[i:(i + merge_count)]
-            # etypes = nonempty_rels[etype_start:etype_end]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(etypes)))
-            start_time(bmm_start)
-
-            for j in etypes:
-                dim_count += h_t[j].numel() + weight[j].numel()
-
-            # with th.cuda.amp.autocast():
-            h_t_merged = [h_t[j] for j in etypes]
-            weight_merged = [weight[j] for j in etypes]
-            results = fused_gemm_batchmm(h_t_merged, weight_merged)
+            # results = fused_gemm_spmm(h_t_merged, weight_merged, etypes)
+            results = fused_gemm_spmm(h, weight_merged, etypes)
             msg.append(results)
-            bmm_time += stop_time(bmm_start, bmm_stop)
             th.cuda.nvtx.range_pop()
         else:
             for j in range(i, len(nonempty_rels)):
@@ -504,11 +464,89 @@ def lowmem_fgemm_batchmm(h_t, weight, num_rels):
                 result = th.matmul(h_t[etype], weight[etype])
                 # print(f"etype: {etype} result: {result}")
                 msg.append(result)
-                bmm_time += stop_time(bmm_start, bmm_stop)
                 th.cuda.nvtx.range_pop()
 
-    return msg, bmm_time, dim_count
+    return results, edge_count, elem_count
 
+def lowmem_fgemm_blockspmm(h, weight, num_rels, nonempty_rels, etypes):
+    edge_count = 0
+    elem_count = 0
+
+    msg = []
+    merge_count = nonempty_rels.size(0)
+    for i in range(0, len(nonempty_rels), merge_count):
+        if i + (merge_count - 1) < nonempty_rels.size(0):
+            # etypes = nonempty_rels[i:(i + merge_count)]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(nonempty_rels)))
+
+            th.cuda.nvtx.range_push("nvtx-mergew")
+            # weight_merged = [weight[j] for j in etypes]
+            weight_merged = th.index_select(weight.data, 0, nonempty_rels)
+            weight_merged = weight_merged.view(-1, weight.data.size(2))
+            th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_push("nvtx-mergeh")
+            # nonempty_rels = nonempty_rels.cpu()
+            # h_t_merged = [h_t[j] for j in nonempty_rels]
+            th.cuda.nvtx.range_pop()
+
+            # results = fused_gemm_blockspmm(h_t_merged, weight_merged, etypes)
+            results = fused_gemm_blockspmm(h, weight_merged, etypes)
+            msg.append(results)
+            th.cuda.nvtx.range_pop()
+        else:
+            for j in range(i, len(nonempty_rels)):
+                etype = nonempty_rels[j]
+                th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+                start_time(bmm_start)
+                dim_count += h_t[etype].numel() + weight[etype].numel()
+                # with th.cuda.amp.autocast():
+                result = th.matmul(h_t[etype], weight[etype])
+                # print(f"etype: {etype} result: {result}")
+                msg.append(result)
+                th.cuda.nvtx.range_pop()
+
+    return results, edge_count, elem_count
+
+def lowmem_fgemm_batchmm(h_t, weight, num_rels, nonempty_rels, etypes):
+    edge_count = 0
+    elem_count = 0
+
+    msg = []
+
+    merge_count = len(nonempty_rels)
+    for i in range(0, len(nonempty_rels), merge_count):
+        if i + (merge_count - 1) < len(nonempty_rels):
+            # etypes = nonempty_rels[i:(i + merge_count)]
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(etypes)))
+
+            th.cuda.nvtx.range_push("nvtx-mergew")
+            weight_merged = th.index_select(weight.data, 0, nonempty_rels)
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-nonemptyrels-cpu")
+            nonempty_rels = nonempty_rels.cpu()
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-mergeh")
+            h_t_merged = [h_t[j] for j in nonempty_rels]
+            th.cuda.nvtx.range_pop()
+
+            results = fused_gemm_batchmm(h_t_merged, weight_merged, etypes)
+            msg.append(results)
+            th.cuda.nvtx.range_pop()
+        else:
+            for j in range(i, len(nonempty_rels)):
+                etype = nonempty_rels[j]
+                th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-type{}".format(etype))
+                start_time(bmm_start)
+                dim_count += h_t[etype].numel() + weight[etype].numel()
+                # with th.cuda.amp.autocast():
+                result = th.matmul(h_t[etype], weight[etype])
+                # print(f"etype: {etype} result: {result}")
+                msg.append(result)
+                th.cuda.nvtx.range_pop()
+
+    return results, edge_count, elem_count
 class RelGraphConv(nn.Module):
     r"""Relational graph convolution layer.
 
@@ -733,12 +771,15 @@ class RelGraphConv(nn.Module):
             assert isinstance(etypes, list)
             th.cuda.nvtx.range_push("nvtx-lowmem-matmuls")
             h_t = th.split(h, etypes)
+
+            nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
+            etypes = th.IntTensor([i for i in etypes if i != 0])
             
             # matmul
-            msg, bmm_time, dim_count = lowmem_matmul(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_matmul(h_t, weight, self.num_rels)
 
             # capi matmul
-            # msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with spgemm
             # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
@@ -747,13 +788,14 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_gemm(h_t, weight, self.num_rels)
 
             # fused gemm with spmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with block spmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h_t, weight, self.num_rels)
+            msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
+                                                                    nonempty_rels, etypes)
 
             # fused gemm with bmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_batchmm(h_t, weight, self.num_rels)
+            # msg, bmm_time, dim_count = lowmem_fgemm_batchmm(h_t, weight, self.num_rels, nonempty_rels, etypes)
 
             if timing:
                 print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)
@@ -824,10 +866,10 @@ class RelGraphConv(nn.Module):
             # elem_count = 0
             # edge_count = 0
 
-            # einsum 
-            msg, edge_count, elem_count = bdd_lowmem_einsum(h_t, self.weight, \
-                                                        self.num_rels, self.num_bases, \
-                                                        self.submat_in, self.submat_out, self.out_feat)
+            # # einsum 
+            # msg, edge_count, elem_count = bdd_lowmem_einsum(h_t, self.weight, \
+            #                                             self.num_rels, self.num_bases, \
+            #                                             self.submat_in, self.submat_out, self.out_feat)
 
             # manual loop over tensors
             # msg, edge_count, elem_count = bdd_lowmem_loop(h_t, self.weight, \
@@ -851,10 +893,18 @@ class RelGraphConv(nn.Module):
             #                                         self.submat_in, self.submat_out, self.out_feat, \
             #                                         nonempty_rels, etypes)
 
+            # msg, edge_count, elem_count = bdd_lowmem_fgemm_spmm(h_t, self.weight, \
             # # spmm
-            # msg, edge_count, elem_count = bdd_lowmem_fgemm_blockspmm(h_t, self.weight, \
-            #                                                     self.num_rels, self.num_bases, \
-            #                                                     self.submat_in, self.submat_out, self.out_feat)
+            # msg, edge_count, elem_count = bdd_lowmem_fgemm_spmm(h, self.weight, \
+            #                                             self.num_rels, self.num_bases, \
+            #                                             self.submat_in, self.submat_out, self.out_feat, \
+            #                                             nonempty_rels, etypes)
+
+            # block spmm
+            msg, edge_count, elem_count = bdd_lowmem_fgemm_blockspmm(h_t, self.weight, \
+                                                        self.num_rels, self.num_bases, \
+                                                        self.submat_in, self.submat_out, self.out_feat, \
+                                                        nonempty_rels, etypes)
 
             th.cuda.nvtx.range_pop()
             # print(f"msg: {msg}")
@@ -869,7 +919,7 @@ class RelGraphConv(nn.Module):
             node = h.view(-1, 1, self.submat_in)
             elem_count = node.numel() + weight.numel()
             msg = th.bmm(node, weight).view(-1, self.out_feat)
-            print(f"msg: {msg} elem_count: {elem_count}")
+            # print(f"msg: {msg} elem_count: {elem_count}")
         if 'norm' in edges.data:
             msg = msg * edges.data['norm']
         return {'msg': msg}

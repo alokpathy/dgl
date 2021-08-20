@@ -117,116 +117,49 @@ class FusedGEMM(torch.autograd.Function):
 
 class FusedGEMMSpMM(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, a1, b1, a2, b2):
-        global preproc_time
+    def forward(ctx, a_mats, b_mats, a_mats_rows):
+        torch.cuda.nvtx.range_push("nvtx-cata")
+        # a = torch.cat(a_mats, dim=0)
+        a = a_mats
+        torch.cuda.nvtx.range_pop()
 
-        preproc_start = torch.cuda.Event(enable_timing=True)
-        preproc_stop = torch.cuda.Event(enable_timing=True)
-
-        start_time(preproc_start)
-        arg_a1 = to_dgl_nd(a1)
-        arg_a2 = to_dgl_nd(a2)
-
-        b = torch.cat((b1, b2), dim=0)
+        torch.cuda.nvtx.range_push("nvtx-to-dgl-nd")
+        b = b_mats
+        arg_a = to_dgl_nd(a)
         arg_b = to_dgl_nd(b)
+        arg_a_mats_rows = to_dgl_nd(a_mats_rows)
+        # ctx.save_for_backward(a1, b1, a2, b2)
+        torch.cuda.nvtx.range_pop()
 
-        # print(f"a1.size: {a1.size()} b1.size: {b1.size()}, a2.size: {a2.size()}, b2.size: {b2.size()}")
-        ctx.save_for_backward(a1, b1, a2, b2)
-
-        ctx_cuda = F.context(b1)
-        dtype = F.dtype(b1)
-        c = F.zeros((a1.size(0) + a2.size(0), b1.size(1)), dtype, ctx_cuda).cuda()
+        torch.cuda.nvtx.range_push("nvtx-construct-mats")
+        ctx_cuda = F.context(b_mats[0])
+        dtype = F.dtype(b_mats[0])
+        c = torch.cuda.FloatTensor(a.size(0), b.size(1))
+        dA_csrOffsets = torch.cuda.FloatTensor(a.size(0) + 1)
+        dA_columns = torch.cuda.FloatTensor(a.numel())
 
         arg_c = to_dgl_nd_for_write(c)
-        preproc_time += stop_time(preproc_start, preproc_stop)
+        arg_dA_csroffsets = to_dgl_nd_for_write(dA_csrOffsets)
+        arg_dA_columns = to_dgl_nd_for_write(dA_columns)
+        torch.cuda.nvtx.range_pop()
 
-        _CAPI_DGLKernelFGEMMSpMM(arg_a1, arg_b, arg_c, \
-                                    a1.size(0), a1.size(1), b1.size(1), \
-                                    arg_a2, \
-                                    a2.size(0), a2.size(1), b2.size(1))
+        torch.cuda.nvtx.range_push("nvtx-capi-spmm")
+        _CAPI_DGLKernelFGEMMSpMM(arg_a, arg_b, arg_c, arg_a_mats_rows, \
+                                    arg_dA_csroffsets, arg_dA_columns, a.size(0), a.size(1), b.size(1))
+        torch.cuda.nvtx.range_pop()
         
-        c1 = c[:a1.size(0)]
-        c2 = c[a1.size(0):]
-
         if timing:
             print(f"preproc_time: {preproc_time}")
 
-        return c1, c2
+        return c
 
     @staticmethod
-    def backward(ctx, dC1, dC2):
-        a1, b1, a2, b2 = ctx.saved_tensors
-        arg_dC1 = to_dgl_nd(dC1)
-        arg_dC2 = to_dgl_nd(dC2)
-
-        grad_a1 = grad_b1 = None
-        grad_a2 = grad_b2 = None
-
-        ctx_cuda = F.context(b1)
-        dtype = F.dtype(b1)
-
-        if ctx.needs_input_grad[0] and ctx.needs_input_grad[2]:
-            b1_t = b1.t()
-            b2_t = b2.t()
-            b = torch.cat((b1_t, b2_t), dim=0)
-            grad_a = F.zeros((dC1.size(0) + dC2.size(0), b.size(1)), dtype, ctx_cuda).cuda()
-
-            arg_b = to_dgl_nd(b)
-
-            arg_grad_a = to_dgl_nd_for_write(grad_a)
-
-            # _CAPI_DGLKernelFGEMM(arg_dC1, arg_b1, arg_grad_a1, \
-            #                         dC1.size(0), dC1.size(1), b1.size(1), \
-            #                         arg_dC2, arg_b2, arg_grad_a2, \
-            #                         dC2.size(0), dC2.size(1), b2.size(1))
-
-            _CAPI_DGLKernelFGEMMSpMM(arg_dC1, arg_b, arg_grad_a, \
-                                        dC1.size(0), dC1.size(1), b.size(1), \
-                                        arg_dC2, \
-                                        dC2.size(0), dC2.size(1), b.size(1))
-            grad_a1 = grad_a[:a1.size(0)]
-            grad_a2 = grad_a[a1.size(0):]
-        elif ctx.needs_input_grad[0]:
-            grad_a1 = torch.matmul(dC1, b1.t()).cuda()
-        elif ctx.needs_input_grad[2]:
-            grad_a2 = torch.matmul(dC2, b2.t()).cuda()
-
-        if ctx.needs_input_grad[1] and ctx.needs_input_grad[3]:
-            a1_t = a1.t()
-            a2_t = a2.t()
-            dC = torch.cat((dC1, dC2), dim=0)
-            grad_b = F.zeros((a1_t.size(0) + a2_t.size(0), dC.size(1)), dtype, ctx_cuda).cuda()
-
-            arg_a1_t = to_dgl_nd(a1_t)
-            arg_a2_t = to_dgl_nd(a2_t)
-            arg_dC = to_dgl_nd(dC)
-
-            arg_grad_b = to_dgl_nd_for_write(grad_b)
-
-            # _CAPI_DGLKernelFGEMM(arg_a1, arg_dC1, arg_grad_b1, \
-            #                         a1.size(0), a1.size(1), dC1.size(1), \
-            #                         arg_a2, arg_dC2, arg_grad_b2, \
-            #                         a2.size(0), a2.size(1), dC2.size(1))
-
-            _CAPI_DGLKernelFGEMMSpMM(arg_a1_t, arg_dC, arg_grad_b, \
-                                        a1_t.size(0), a1_t.size(1), dC.size(1), \
-                                        arg_a2_t, \
-                                        a2_t.size(0), a2_t.size(1), dC.size(1))
-
-            grad_b1 = grad_b[:b1.size(0)]
-            grad_b2 = grad_b[b1.size(0):]
-            
-        elif ctx.needs_input_grad[1]:
-            grad_b1 = torch.matmul(a1, dC1).cuda()
-        elif ctx.needs_input_grad[3]:
-            grad_b2 = torch.matmul(a2, dC2).cuda()
-
-        return grad_a1, grad_b1, grad_a2, grad_b2
+    def backward(ctx, dC):
+        return None, None, None
 
 class FusedGEMMBlockSpMM(torch.autograd.Function):
     @staticmethod
-    # def forward(ctx, a1, b1, a2, b2):
-    def forward(ctx, a_mats, b_mats):
+    def forward(ctx, a_mats, b_mats, a_mats_rows):
         global preproc_time
         global padding_time
         global atohalf_time
@@ -242,57 +175,73 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         a_mats_pad = []
         b_mats_pad = []
 
-        block_dim = max([max(j.size(0), j.size(1)) for j in a_mats])
+        # block_dim = a_mats[0].size(1)
+        block_dim = a_mats.size(1)
 
         torch.cuda.nvtx.range_push("nvtx-padding")
+        padding = 0
+        for i in range(len(a_mats_rows)):
+            if a_mats_rows[i] % block_dim != 0:
+                padding += block_dim - (a_mats_rows[i].item() % block_dim)
+
+        num_edges = torch.sum(a_mats_rows).item()
+        a_pad = torch.cuda.HalfTensor(num_edges + padding, block_dim)
+        # a_mat_cat = torch.cat(a_mats).half()
+        a_mat_cat = a_mats.half()
+
+        arg_a_pad = to_dgl_nd(a_pad)
+        arg_a_mat = to_dgl_nd(a_mat_cat)
+        arg_a_mats_rows = to_dgl_nd(a_mats_rows)
+
         start_time(preproc_start)
-
-        for i in range(len(a_mats)):
-            a_mats_pad.append(torch.nn.functional.pad(a_mats[i], (0, block_dim - a_mats[i].size(1), \
-                                                                        0, block_dim - a_mats[i].size(0))))
-            b_mats_pad.append(torch.nn.functional.pad(b_mats[i], (0, 0, 0, block_dim - a_mats[i].size(1))))
-
+        _CAPI_DGLKernelPadA2D(arg_a_pad, arg_a_mat, arg_a_mats_rows, num_edges + padding, \
+                                    block_dim, a_mats_rows.size(0))
         padding_time += stop_time(preproc_start, preproc_stop)
+
         torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-concat-mats")
-        start_time(preproc_start)
-        a_pad = torch.cat(a_mats_pad, dim=0).half()
-        b_pad = torch.cat(b_mats_pad, dim=0).contiguous().half()
+        # a_pad = torch.cat(a_mats_pad, dim=0).half()
+        b_pad = b_mats.half()
         ctx.save_for_backward(a_pad, b_pad)
-        ctx.num_blocks = len(b_mats)
-        arg_a_pad = to_dgl_nd(a_pad)
+        ctx.num_blocks = len(a_mats_rows)
+        # arg_a_pad = to_dgl_nd(a_pad)
         arg_b_pad = to_dgl_nd(b_pad)
+        # arg_a_mats_rows = to_dgl_nd(a_mats_rows)
         torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-construct-c")
-        start_time(preproc_start)
         ctx_cuda = F.context(b_pad)
         c_pad = F.zeros((a_pad.size(0), b_pad.size(1)), torch.half, ctx_cuda).cuda()
 
         arg_c_pad = to_dgl_nd_for_write(c_pad)
-        ctohalf_time += stop_time(preproc_start, preproc_stop)
         torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-blocked-spmm")
-        start_time(preproc_start)
-        _CAPI_DGLKernelFGEMMBlockSpMM(arg_a_pad, arg_b_pad, arg_c_pad, \
-                                        a_pad.size(0), a_pad.size(1), b_pad.size(1), block_dim)
-        blockedspmm_time += stop_time(preproc_start, preproc_stop)
+        _CAPI_DGLKernelFGEMMBlockSpMM(arg_a_pad, arg_b_pad, arg_c_pad, arg_a_mats_rows, \
+                                        a_pad.size(0), a_pad.size(1), b_pad.size(1), block_dim, len(a_mats_rows))
         torch.cuda.nvtx.range_pop()
         
-        torch.cuda.nvtx.range_push("nvtx-c-to-float")
-        start_time(preproc_start)
+        torch.cuda.nvtx.range_push("nvtx-abc-to-float")
         c_pad = c_pad.float()
-        abctofloat_time += stop_time(preproc_start, preproc_stop)
         torch.cuda.nvtx.range_pop()
 
-        torch.cuda.nvtx.range_push("nvtx-extractc1c2")
-        c = []
-        for i in range(len(a_mats_pad)):
-            output_ci = c_pad[(i * block_dim):((i + 1) * block_dim)]
-            c.append(output_ci[:a_mats[i].size(0), :b_mats[i].size(1)])
-        c = torch.cat(c)
+        torch.cuda.nvtx.range_push("nvtx-extractc")
+        c = torch.cuda.FloatTensor(num_edges, b_mats.size(1))
+        arg_c = to_dgl_nd_for_write(c)
+        arg_c_pad = F.to_dgl_nd(c_pad)
+        _CAPI_DGLKernelUnpadC2D(arg_c, arg_c_pad, arg_a_mats_rows, c.size(0), c.size(1), len(a_mats_rows))
+        # c = []
+        # row_idx = 0
+        # for i in range(len(a_mats_rows)):
+        #     if a_mats_rows[i] % block_dim == 0:
+        #         padding = 0
+        #     else:
+        #         padding = block_dim - (a_mats_rows[i] % block_dim)
+        #     output_ci = c_pad[row_idx:(row_idx + a_mats_rows[i] + padding)]
+        #     c.append(output_ci[:a_mats_rows[i], :b_mats.size(1)])
+        #     row_idx += a_mats_rows[i] + padding
+        # c = torch.cat(c)
         torch.cuda.nvtx.range_pop()
 
         if timing and first_step:
@@ -320,54 +269,7 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         a_pad, b_pad = ctx.saved_tensors
         num_blocks = ctx.num_blocks
 
-        return [None] * num_blocks, [None] * num_blocks
-
-# class FusedGEMMBatchMM(torch.autograd.Function):
-#     @staticmethod
-#     # def forward(ctx, a1, b1, a2, b2, a3, b3, a4, b4):
-#     def forward(ctx, a_mats, b_mats):
-#         global preproc_time
-# 
-#         preproc_start = torch.cuda.Event(enable_timing=True)
-#         preproc_stop = torch.cuda.Event(enable_timing=True)
-# 
-#         a_mats_pad = []
-# 
-#         block_dim = max([j.size(0) for j in a_mats])
-# 
-#         torch.cuda.nvtx.range_push("nvtx-padding")
-#         start_time(preproc_start)
-#         for i in range(len(a_mats)):
-#             a_mats_pad.append(torch.nn.functional.pad(a_mats[i], (0, 0, 0, block_dim - a_mats[i].size(0))))
-# 
-#         preproc_time += stop_time(preproc_start, preproc_stop)
-#         torch.cuda.nvtx.range_pop()
-# 
-#         torch.cuda.nvtx.range_push("nvtx-construct-ab3d")
-#         a3d = torch.stack(a_mats_pad)
-#         b3d = torch.stack(b_mats)
-#         torch.cuda.nvtx.range_pop()
-# 
-#         torch.cuda.nvtx.range_push("nvtx-bmm")
-#         # with torch.cuda.amp.autocast():
-#         c = torch.bmm(a3d, b3d)
-#         torch.cuda.nvtx.range_pop()
-# 
-#         torch.cuda.nvtx.range_push("nvtx-extract-c")
-#         c_layers = [j.squeeze(0) for j in torch.tensor_split(c, c.size(0))]
-#         for i in range(len(c_layers)):
-#             c_layers[i] = c_layers[i][:a_mats[i].size(0), :b_mats[i].size(1)]
-#         c = torch.cat(c_layers, dim=0)
-#         torch.cuda.nvtx.range_pop()
-# 
-#         if timing:
-#             print(f"preproc_time: {preproc_time}")
-# 
-#         return c
-# 
-#     @staticmethod
-#     def backward(ctx, dC1, dC2, dC3, dC4):
-#         return None, None, None, None, None, None, None, None
+        return None, None, None
 
 class FusedGEMMBatchMM(torch.autograd.Function):
     @staticmethod
@@ -460,6 +362,12 @@ class CAPIGEMMs(torch.autograd.Function):
         a_mats = torch.cat(a_mats)
         torch.cuda.nvtx.range_pop()
 
+        # torch.cuda.nvtx.range_push("nvtx-mats-to-half")
+        # a_mats = a_mats.half()
+        # b_mats = b_mats.half()
+        # c_mats = c_mats.half()
+        # torch.cuda.nvtx.range_pop()
+
         torch.cuda.nvtx.range_push("nvtx-to-dgl-nd")
         arg_a_mats = F.to_dgl_nd(a_mats)
         arg_b_mats = F.to_dgl_nd(b_mats)
@@ -472,6 +380,10 @@ class CAPIGEMMs(torch.autograd.Function):
                                     middim, outcol, len(a_mats_rows), total_edges)
         torch.cuda.nvtx.range_pop()
 
+        # torch.cuda.nvtx.range_push("nvtx-mats-to-float")
+        # c_mats = c_mats.float()
+        # torch.cuda.nvtx.range_pop()
+
         return c_mats
 
     @staticmethod
@@ -481,12 +393,11 @@ class CAPIGEMMs(torch.autograd.Function):
 def fused_gemm(a1, b1, a2, b2):
     return FusedGEMM.apply(a1, b1, a2, b2)
 
-def fused_gemm_spmm(a1, b1, a2, b2):
-    return FusedGEMMSpMM.apply(a1, b1, a2, b2)
+def fused_gemm_spmm(a_mats, b_mats, a_mats_rows):
+    return FusedGEMMSpMM.apply(a_mats, b_mats, a_mats_rows)
 
-def fused_gemm_blockspmm(a_mats, b_mats):
-    # return FusedGEMMBlockSpMM.apply(a1, b1, a2, b2)
-    return FusedGEMMBlockSpMM.apply(a_mats, b_mats)
+def fused_gemm_blockspmm(a_mats, b_mats, a_mats_rows):
+    return FusedGEMMBlockSpMM.apply(a_mats, b_mats, a_mats_rows)
 
 def fused_gemm_batchmm(a_mats, b_mats, a_mats_rows):
     return FusedGEMMBatchMM.apply(a_mats, b_mats, a_mats_rows)

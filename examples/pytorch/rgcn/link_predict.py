@@ -68,17 +68,7 @@ class LinkPredict(nn.Module):
         return score
 
     def forward(self, g, h, r, norm, epoch=0):
-        # return self.rgcn.forward(g, h, r, norm)
-        if epoch == 1:
-            torch.cuda.profiler.cudart().cudaProfilerStart()
-            torch.cuda.nvtx.range_push("nvtx-layer")
-            # self.rgcn.forward(g, h, r, norm)
-            self.rgcn.forward(g, h, r, norm, epoch=epoch)
-            torch.cuda.nvtx.range_pop()
-            torch.cuda.profiler.cudart().cudaProfilerStop()
-            exit()
-        else:
-            return self.rgcn.forward(g, h, r, norm)
+        return self.rgcn.forward(g, h, r, norm, epoch=epoch)
 
     def regularization_loss(self, embedding):
         return torch.mean(embedding.pow(2)) + torch.mean(self.w_relation.pow(2))

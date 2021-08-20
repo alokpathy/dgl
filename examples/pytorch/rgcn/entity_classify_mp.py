@@ -29,7 +29,7 @@ import tqdm
 from ogb.nodeproppred import DglNodePropPredDataset
 import torch.autograd.profiler as profiler
 
-timing = False
+timing = True
 
 np.random.seed(0)
 th.manual_seed(0)
@@ -131,7 +131,7 @@ class EntityClassify(nn.Module):
             blocks = [self.g] * len(self.layers)
         h = feats
         for layer, block in zip(self.layers, blocks):
-            if epoch == 4 and step == 1:
+            if epoch == 0 and step == 5:
                 print(f"block: {block} h.size: {h.size()}", flush=True)
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-blockcopy")

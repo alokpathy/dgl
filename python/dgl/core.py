@@ -275,7 +275,6 @@ def invoke_gspmm(graph, mfunc, rfunc, *, srcdata=None, dstdata=None, edata=None)
         x = alldata[mfunc.target][mfunc.in_field]
         op = getattr(ops, '{}_{}'.format(mfunc.name, rfunc.name))
         z = op(graph, x)
-        torch.cuda.nvtx.range_pop()
     return {rfunc.out_field : z}
 
 def message_passing(g, mfunc, rfunc, afunc):

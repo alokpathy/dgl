@@ -21,10 +21,11 @@ namespace aten {
 void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int N1, int K1,
                     NDArray A2, NDArray B2, NDArray C2, int M2, int N2, int K2);
 
-void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int N1, int K1,
-                        NDArray A2, int M2, int N2, int K2);
+void fused_gemm_spmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, 
+                        NDArray dA_csrOffsets, NDArray dA_columns, int M, int K, int N);
 
-void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int block_dim);
+void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, int M, int K, int N, 
+                                int block_dim, int num_rels);
 
 // void capi_gemms(std::vector<NDArray> A_mats, std::vector<NDArray> B_mats, std::vector<NDArray> C_mats, 
 //                        std::vector<int> A_mats_rows, int middim, int outcol);
@@ -32,9 +33,16 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, int M, int K, int N, 
 void capi_gemms(NDArray A_mats, NDArray B_mats, NDArray C_mats, 
                         NDArray A_mats_rows, int middim, int outcol, int num_rels, int total_edges);
 
+void capi_gemms_half(NDArray A_mats, NDArray B_mats, NDArray C_mats, 
+                        NDArray A_mats_rows, int middim, int outcol, int num_rels, int total_edges);
+
 void pad_a(NDArray A3D, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int dim2);
 
+void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int num_rels);
+
 void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim1, int dim2);
+
+void unpad_c2d(NDArray C_mats, NDArray C_pad, NDArray C_mats_rows, int dim0, int dim1, int num_rels);
 
 /*!
  * \brief Generalized Sparse Matrix Dense Matrix Multiplication on Csr format.

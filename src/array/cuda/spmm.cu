@@ -11,6 +11,7 @@
 #include "nvToolsExt.h"
 
 // #define TIMING
+#define GB 1073741824
 
 float spgemm_total = 0;
 float spgemm_preproc = 0;
@@ -340,16 +341,21 @@ inline bool cusparse_available() {
 #endif
 }
 
+__global__ void SetCsrOffsetsSpMM(int *offsets, int matA_numrows, int K) {
+  int     id = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  
+  for (int i = id; i < matA_numrows + 1; i += stride) {
+    offsets[i] = i * K;
+  }
+}
+
 __global__ void SetCsrOffsets(int *offsets, int M1, int N1, int M2, int N2) {
   int     id = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   
   for (int i = id; i < M1; i += stride) {
     offsets[i] = i * N1;
-  }
-
-  for (int i = id + M1; i < M1 + M2 + 1; i += stride) {
-    offsets[i] = M1 * N1 + (i - M1) * N2;
   }
 }
 
@@ -615,22 +621,11 @@ void fused_gemm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
 #endif
 }
 
-void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
-                        NDArray A2, int M2, int K2, int N2) {
+void fused_gemm_spmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, 
+                        NDArray dA_csrOffsets, NDArray dA_columns, int M, int K, int N) {
 
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
 
-#ifdef TIMING
-  cudaEvent_t total_start, total_stop;
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventCreate(&total_start);
-  cudaEventCreate(&total_stop);
-
-  cudaEventRecord(total_start);
-  // nvtxRangePushA("nvtx-spmm-total");
-#endif
   cusparseSpMatDescr_t matA;
   cusparseDnMatDescr_t matB, matC;
   void*                dBuffer    = NULL;
@@ -641,18 +636,16 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
     CUSPARSE_CALL(cusparseCreate(&(thr_entry->cusparse_handle)));
   }
 
-#ifdef TIMING
-  cudaEventRecord(start);
-  // nvtxRangePushA("nvtx-spmm-preproc");
-#endif
   // Convert A into sparse matrix
-  int *dA_csrOffsets, *dA_columns;
+  // int *dA_csrOffsets, *dA_columns;
   float *dA_values;
-  int matA_numrows = M1 + M2;
-  int matA_nnz = M1 * K1 + M2 * K2;
-  CUDA_CALL( cudaMalloc(&dA_csrOffsets, (matA_numrows + 1) * sizeof(int)) );
-  CUDA_CALL( cudaMalloc(&dA_columns, matA_nnz * sizeof(int)) );
-  CUDA_CALL( cudaMalloc(&dA_values, matA_nnz * sizeof(float)) );
+  int matA_numrows = M;
+  int matA_nnz = M * K;
+  int num_rels = A_mats_rows.NumElements();
+  // CUDA_CALL( cudaMalloc(&dA_csrOffsets, (matA_numrows + 1) * sizeof(int)) );
+  // CUDA_CALL( cudaMalloc(&dA_columns, matA_nnz * sizeof(int)) );
+  int *dA_csrOffsets_ptr = (int *)dA_csrOffsets->data;
+  int *dA_columns_ptr = (int *)dA_columns->data;
 
   const int nt_aoff = FindNumThreads(matA_numrows + 1);
   const int nb_aoff = (matA_numrows + 1 + nt_aoff - 1) / nt_aoff;
@@ -660,23 +653,39 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
   const int nt_acol = FindNumThreads(matA_nnz);
   const int nb_acol = (matA_nnz + nt_acol - 1) / nt_acol;
 
-  CUDA_KERNEL_CALL( SetCsrOffsets, nb_aoff, nt_aoff, 0, thr_entry->stream, dA_csrOffsets, M1, K1, M2, K2 );
-  CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M1, K1, M2, K2 );
-  CUDA_CALL( cudaMemcpy(dA_values, A1->data, M1 * K1 * sizeof(float), cudaMemcpyDeviceToDevice) );
-  CUDA_CALL( cudaMemcpy(dA_values + M1 * K1, A2->data, M2 * K2 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  // CUDA_KERNEL_CALL( SetCsrColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_columns, M1, K1, M2, K2 );
+  // CUDA_CALL( cudaMemcpy(dA_values, A1->data, M1 * K1 * sizeof(float), cudaMemcpyDeviceToDevice) );
+  // CUDA_CALL( cudaMemcpy(dA_values + M1 * K1, A2->data, M2 * K2 * sizeof(float), cudaMemcpyDeviceToDevice) );
 
-  CUSPARSE_CALL( cusparseCreateCsr(&matA, M1 + M2, K1 + K2, matA_nnz,
-                                    dA_csrOffsets, dA_columns, dA_values,
+  int *hA_columns = new int[matA_nnz]();
+
+  int *A_mats_rows_ptr = (int *)A_mats_rows->data;
+
+  CUDA_KERNEL_CALL( SetCsrOffsetsSpMM, nb_aoff, nt_aoff, 0, thr_entry->stream, 
+                        dA_csrOffsets_ptr, matA_numrows, K);
+
+  int hA_columns_ptr = 0;
+  int col_count = 0;
+  for (int i = 0; i < num_rels; i++) {
+    for (int j = 0; j < A_mats_rows_ptr[i] * K; j++) {
+      hA_columns[hA_columns_ptr++] = col_count + j % K;
+    }
+    col_count += K;
+  }
+
+  CUDA_CALL( cudaMemcpyAsync(dA_columns_ptr, hA_columns, matA_nnz * sizeof(int), cudaMemcpyHostToDevice) );
+
+  CUSPARSE_CALL( cusparseCreateCsr(&matA, M, K * num_rels, matA_nnz,
+                                    dA_csrOffsets_ptr, dA_columns_ptr, A->data,
                                     CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                                     CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F) );
 
   // Convert B into dense matrix
-  CUSPARSE_CALL( cusparseCreateDnMat(&matB, K1 + K2, N1, N1, B1->data,
-				      CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+  CUSPARSE_CALL( cusparseCreateDnMat(&matB, K * num_rels, N, N, B->data, CUDA_R_32F, CUSPARSE_ORDER_ROW) );
 
   // Convert C into dense matrix
-  CUSPARSE_CALL( cusparseCreateDnMat(&matC, M1 + M2, N1, N1, C1->data,
-				      CUDA_R_32F, CUSPARSE_ORDER_ROW) );
+  cudaMemset(C->data, 0, M * N * sizeof(float));
+  CUSPARSE_CALL( cusparseCreateDnMat(&matC, M, N, N, C->data, CUDA_R_32F, CUSPARSE_ORDER_ROW) );
 
   // allocate an external buffer if needed
   float alpha           = 1.0f;
@@ -689,18 +698,6 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
                                CUSPARSE_SPMM_CSR_ALG2, &bufferSize) );
   CUDA_CALL( cudaMalloc(&dBuffer, bufferSize) );
 
-#ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spmm_preproc_loc = 0;
-  cudaEventElapsedTime(&spmm_preproc_loc, start, stop);
-  spmm_preproc += spmm_preproc_loc;
-  // nvtxRangePop();
-
-  cudaEventRecord(start);
-  // nvtxRangePushA("nvtx-spmm-compute");
-#endif
-
   // execute SpMM
   CUSPARSE_CALL( cusparseSpMM(thr_entry->cusparse_handle,
                                CUSPARSE_OPERATION_NON_TRANSPOSE,
@@ -708,51 +705,21 @@ void fused_gemm_spmm(NDArray A1, NDArray B1, NDArray C1, int M1, int K1, int N1,
                                &alpha, matA, matB, &beta, matC, CUDA_R_32F,
                                CUSPARSE_SPMM_CSR_ALG2, dBuffer) );
 
-#ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spmm_compute_loc = 0;
-  cudaEventElapsedTime(&spmm_compute_loc, start, stop);
-  spmm_compute += spmm_compute_loc;
-  // nvtxRangePop();
-
-  cudaEventRecord(start);
-  // nvtxRangePushA("nvtx-spmm-destroy");
-#endif
-
   // destroy matrix/vector descriptors
-  CUDA_CALL( cudaFree(dA_csrOffsets) );
-  CUDA_CALL( cudaFree(dA_columns) );
-  CUDA_CALL( cudaFree(dA_values) );
+  // CUDA_CALL( cudaFree(dA_csrOffsets) );
+  // CUDA_CALL( cudaFree(dA_columns) );
+  // CUDA_CALL( cudaFree(dA_values) );
   CUDA_CALL( cudaFree(dBuffer) );
+
+  delete[] hA_columns;
 
   CUSPARSE_CALL( cusparseDestroySpMat(matA) );
   CUSPARSE_CALL( cusparseDestroyDnMat(matB) );
   CUSPARSE_CALL( cusparseDestroyDnMat(matC) );
-#ifdef TIMING
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float spmm_destroy_loc = 0;
-  cudaEventElapsedTime(&spmm_destroy_loc, start, stop);
-  spmm_destroy += spmm_destroy_loc;
-  // nvtxRangePop();
-
-  cudaEventRecord(total_stop);
-  cudaEventSynchronize(total_stop);
-  float spmm_total_loc = 0;
-  cudaEventElapsedTime(&spmm_total_loc, total_start, total_stop);
-  spmm_total += spmm_total_loc;
-  // nvtxRangePop();
-  
-  float spmm_accum_time = spmm_preproc + spmm_compute + spmm_destroy;
-  printf("spmm_total: %f %f\n", spmm_total, spmm_accum_time / spmm_total);
-  printf("spmm_preproc: %f\n", spmm_preproc);
-  printf("spmm_compute: %f\n", spmm_compute);
-  printf("spmm_destroy: %f\n", spmm_destroy); fflush(stdout);
-#endif
 }
 
-void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, int M, int K, int N, int block_dim) {
+void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, int M, int K, int N, 
+                              int block_dim, int num_rels) {
 
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
 
@@ -786,7 +753,7 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, int M, int K, int N, 
   int matA_numblocks = M / block_dim;
 
   int matA_numrows = M;
-  int matA_numcols = K * matA_numblocks;
+  int matA_numcols = K * num_rels;
   int matA_nnz = M * K;
   int matA_blocksize = block_dim;
   int matA_ellcols = matA_blocksize;
@@ -796,9 +763,25 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, int M, int K, int N, 
   const int nt_acol = FindNumThreads(matA_numblocks);
   const int nb_acol = (matA_numblocks + nt_acol - 1) / nt_acol;
 
-  CUDA_KERNEL_CALL( SetEllColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_colind, matA_numblocks );
-  // CUDA_CALL( cudaMemcpy(dA_values, A1->data, M1 * K1 * sizeof(__half), cudaMemcpyDeviceToDevice) );
-  // CUDA_CALL( cudaMemcpy(dA_values + M1 * K1, A2->data, M2 * K2 * sizeof(__half), cudaMemcpyDeviceToDevice) );
+  // CUDA_KERNEL_CALL( SetEllColumns, nb_acol, nt_acol, 0, thr_entry->stream, dA_colind, matA_numblocks );
+  int *hA_colind = new int[matA_numblocks]();
+  int *A_mats_rows_ptr = (int *)A_mats_rows->data;
+
+  int colind_ptr = 0;
+  for (int i = 0; i < num_rels; i++) {
+    int rowsize = A_mats_rows_ptr[i];
+    int num_mats_blocks = rowsize / block_dim;
+    if (rowsize % block_dim != 0) {
+      num_mats_blocks++;
+    }
+
+    for (int j = colind_ptr; j < colind_ptr + num_mats_blocks; j++) {
+      hA_colind[j] = i;
+    }
+    colind_ptr += num_mats_blocks;
+  }
+
+  cudaMemcpy(dA_colind, hA_colind, matA_numblocks * sizeof(int), cudaMemcpyHostToDevice);
 
   CUSPARSE_CALL( cusparseCreateBlockedEll(&matA,
                                     matA_numrows, matA_numcols, matA_blocksize,
@@ -922,12 +905,52 @@ void capi_gemms(NDArray A_mats, NDArray B_mats, NDArray C_mats,
   } 
 }
 
+void capi_gemms_half(NDArray A_mats, NDArray B_mats, NDArray C_mats, 
+                        NDArray A_mats_rows, int middim, int outcol, int num_rels, int total_edges) {
+
+  auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
+
+  if (!thr_entry->cublas_handle)
+    CUBLAS_CALL(cublasCreate(&(thr_entry->cublas_handle)));
+
+  // GEMM operation
+  const __half alpha = 1;
+  const __half beta = 0;
+
+  // float *A_ptr = (float*) A_mats->data;
+  // float *B_ptr = (float*) B_mats->data;
+  // float *C_ptr = (float*) C_mats->data;
+  __half *A_ptr = (__half*) A_mats->data;
+  __half *B_ptr = (__half*) B_mats->data;
+  __half *C_ptr = (__half*) C_mats->data;
+  int *A_mats_rows_ptr = (int *) A_mats_rows->data;
+
+  cudaMemset(C_ptr, 0, total_edges * sizeof(__half));
+
+  int row_count = 0;
+  for (int i = 0; i < num_rels; i++) {
+    // CUBLAS_CALL(cublasSgemm(
+    CUBLAS_CALL(cublasHgemm(
+        thr_entry->cublas_handle,
+        CUBLAS_OP_N, CUBLAS_OP_N,
+        outcol, A_mats_rows_ptr[i], middim,       // transposed because cublas only supports column-major
+        &alpha, 
+        (const __half*) (B_ptr + i * middim * outcol), outcol,
+        (const __half*) (A_ptr + row_count * middim), middim,
+        &beta, 
+        (__half*) (C_ptr + row_count * outcol), outcol));
+    
+    row_count += A_mats_rows_ptr[i];
+  } 
+}
+
 void pad_a(NDArray A3D, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int dim2) {
 
   float *A3D_ptr = (float *) A3D->data;
   float *A_mats_ptr = (float *) A_mats->data;
   int *A_mats_rows_ptr = (int *) A_mats_rows->data;
 
+  int total_data = 0;
   cudaMemset(A3D->data, 0, dim0 * dim1 * dim2 * sizeof(float));
   int row_count = 0;
   for (int i = 0; i < dim0; i++) {
@@ -937,8 +960,64 @@ void pad_a(NDArray A3D, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1,
                       cudaMemcpyDeviceToDevice);
                        
     row_count += A_mats_rows_ptr[i];
+    total_data += A_mats_rows_ptr[i] * dim2;
   }
   cudaDeviceSynchronize();
+}
+
+void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int num_rels) {
+
+  __half *A_pad_ptr = (__half *) A_pad->data;
+  __half *A_mats_ptr = (__half *) A_mats->data;
+  int *A_mats_rows_ptr = (int *) A_mats_rows->data;
+
+  cudaMemset(A_pad->data, 0, dim0 * dim1 * sizeof(__half));
+  int row_count_in = 0;
+  int row_count_out = 0;
+  int total_data = 0;
+
+//   const int num_streams = 1;
+//   cudaStream_t streams[num_streams];
+//   for (int i = 0; i < num_streams; i++) {
+//     cudaStreamCreate(&streams[i]);
+//   }
+// 
+  // cudaEvent_t start, stop;
+  // cudaEventCreate(&start);
+  // cudaEventCreate(&stop);
+
+  // cudaEventRecord(start);
+  for (int i = 0; i < num_rels; i++) {
+    cudaMemcpyAsync(A_pad_ptr + row_count_out * dim1,
+                      A_mats_ptr + row_count_in * dim1,
+                      A_mats_rows_ptr[i] * dim1 * sizeof(__half),
+                      cudaMemcpyDeviceToDevice);
+                      // streams[i % num_streams]);
+                       
+    row_count_in += A_mats_rows_ptr[i];
+    row_count_out += A_mats_rows_ptr[i];
+
+    total_data += A_mats_rows_ptr[i] * dim1 * sizeof(__half);
+
+    int padding = 0;
+    if (A_mats_rows_ptr[i] % dim1 != 0) {
+      padding = dim1 - (A_mats_rows_ptr[i] % dim1);
+    }
+    row_count_out += padding;
+  }
+//   cudaEventRecord(stop);
+//   cudaEventSynchronize(stop);
+// 
+//   float copytime = 0.0f;
+//   cudaEventElapsedTime(&copytime, start, stop);
+//   copytime = copytime / 1000; // seconds
+// 
+  // std::cout << "total_data: " << total_data << " copy_time: " << copytime << " bandwidth GB/s: " << (total_data / copytime / GB) << "\n";
+  // cudaDeviceSynchronize();
+
+  // for (int i = 0; i < num_streams; i++) {
+  //   cudaStreamDestroy(streams[i]);
+  // }
 }
 
 void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim1, int dim2) {
@@ -955,6 +1034,34 @@ void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim
                       cudaMemcpyDeviceToDevice);
                        
     row_count += C_mats_rows_ptr[i];
+  }
+  cudaDeviceSynchronize();
+}
+
+void unpad_c2d(NDArray C_mats, NDArray C_pad, NDArray C_mats_rows, int dim0, int dim1, int num_rels) {
+
+  float *C_pad_ptr = (float *) C_pad->data;
+  float *C_mats_ptr = (float *) C_mats->data;
+  int *C_mats_rows_ptr = (int *) C_mats_rows->data;
+
+  // cudaMemset(C_mats->data, 0, dim0 * dim1 * sizeof(float));
+  int row_count_in = 0;
+  int row_count_out = 0;
+  for (int i = 0; i < num_rels; i++) {
+    cudaMemcpyAsync(C_mats_ptr + row_count_in * dim1,
+                      C_pad_ptr + row_count_out * dim1,
+                      C_mats_rows_ptr[i] * dim1 * sizeof(float),
+                      cudaMemcpyDeviceToDevice);
+                       
+    row_count_in += C_mats_rows_ptr[i];
+    row_count_out += C_mats_rows_ptr[i];
+
+    // int padding = 0;
+    // if (C_mats_rows_ptr[i] % dim1 != 0) {
+    //   padding = dim1 - (C_mats_rows_ptr[i] % dim1);
+    // }
+    // printf("i: %d rows: %d padding: %d dim1: %d\n", i, C_mats_rows_ptr[i], padding, dim1);
+    // row_count_out += padding;
   }
   cudaDeviceSynchronize();
 }
