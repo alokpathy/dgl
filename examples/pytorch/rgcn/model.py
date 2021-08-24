@@ -65,8 +65,8 @@ class BaseRGCN(nn.Module):
         layer_stop = th.cuda.Event(enable_timing=True)
 
         for i, layer in enumerate(self.layers):
-            if epoch == 5 and i == 1: # 5th epoch and first RelGraphConv layer
-                # th.cuda.profiler.cudart().cudaProfilerStart()
+            if epoch == 8 and i == 1: # 5th epoch and first RelGraphConv layer
+                th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-layer")
 
                 start_time(layer_start)
@@ -74,7 +74,7 @@ class BaseRGCN(nn.Module):
                 layer_time = stop_time(layer_start, layer_stop)
 
                 th.cuda.nvtx.range_pop()
-                # th.cuda.profiler.cudart().cudaProfilerStop()
+                th.cuda.profiler.cudart().cudaProfilerStop()
 
                 print(f"layer_time: {layer_time}")
                 exit()

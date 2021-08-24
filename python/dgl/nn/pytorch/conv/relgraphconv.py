@@ -883,10 +883,10 @@ class RelGraphConv(nn.Module):
             #                                                     self.submat_in, self.submat_out, self.out_feat)
 
             # # CAPI series of GEMMs
-            msg, edge_count, elem_count = bdd_lowmem_capi_matmuls(h_t, self.weight, \
-                                                    self.num_rels, self.num_bases, \
-                                                    self.submat_in, self.submat_out, self.out_feat,
-                                                    nonempty_rels, etypes)
+            # msg, edge_count, elem_count = bdd_lowmem_capi_matmuls(h_t, self.weight, \
+            #                                         self.num_rels, self.num_bases, \
+            #                                         self.submat_in, self.submat_out, self.out_feat,
+            #                                         nonempty_rels, etypes)
 
             # # batch mm
             # msg, edge_count, elem_count = bdd_lowmem_fgemm_batchmm(h_t, self.weight, \
@@ -903,10 +903,10 @@ class RelGraphConv(nn.Module):
 
             # msg, edge_count, elem_count = bdd_lowmem_fgemm_blockspmm(h_t, self.weight, \
             # block spmm
-            # msg, edge_count, elem_count = bdd_lowmem_fgemm_blockspmm(h, self.weight, \
-            #                                             self.num_rels, self.num_bases, \
-            #                                             self.submat_in, self.submat_out, self.out_feat, \
-            #                                             nonempty_rels, etypes)
+            msg, edge_count, elem_count = bdd_lowmem_fgemm_blockspmm(h, self.weight, \
+                                                        self.num_rels, self.num_bases, \
+                                                        self.submat_in, self.submat_out, self.out_feat, \
+                                                        nonempty_rels, etypes)
 
             th.cuda.nvtx.range_pop()
             # print(f"msg: {msg}")
