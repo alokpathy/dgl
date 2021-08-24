@@ -965,59 +965,114 @@ void pad_a(NDArray A3D, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1,
   cudaDeviceSynchronize();
 }
 
-void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int num_rels) {
+__global__ void PadA2D(__half *A_pad_ptr, __half *A_mats_ptr, int *A_mats_rows_ptr, int *a_mat_rows_ps, 
+                          int *a_pad_rows_ps, int nnz, int num_rels, int dim1) {
 
+  int     id = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+
+  // for (int i = id; i < nnz; i += stride) {
+  //   int rel = -1;
+  //   for (int j = 0; j < num_rels; j++) {
+  //     if (i < a_mats_rows_ps[j + 1]) {
+  //       rel = j;
+  //       break;
+  //     }
+  //   }
+
+  //   int pos = atomicAdd(&a_mats_rows_ctr[rel], 1);
+  //   A_pad_ptr[pos] = A_mats_ptr[i];
+  // }
+  for (int i = id; i < num_rels; i += stride) {
+    memcpy(A_pad_ptr + a_pad_rows_ps[i] * dim1,
+                      A_mats_ptr + a_mat_rows_ps[i] * dim1,
+                      A_mats_rows_ptr[i] * dim1 * sizeof(__half));
+  }
+}
+
+
+void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, 
+                int num_edges, int num_rels) {
+
+  auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
   __half *A_pad_ptr = (__half *) A_pad->data;
   __half *A_mats_ptr = (__half *) A_mats->data;
   int *A_mats_rows_ptr = (int *) A_mats_rows->data;
 
   cudaMemset(A_pad->data, 0, dim0 * dim1 * sizeof(__half));
-  int row_count_in = 0;
-  int row_count_out = 0;
-  int total_data = 0;
+  // int row_count_in = 0;
+  // int row_count_out = 0;
 
-//   const int num_streams = 1;
-//   cudaStream_t streams[num_streams];
-//   for (int i = 0; i < num_streams; i++) {
-//     cudaStreamCreate(&streams[i]);
-//   }
-// 
+  // for (int i = 0; i < num_rels; i++) {
+  //   cudaMemcpyAsync(A_pad_ptr + row_count_out * dim1,
+  //                     A_mats_ptr + row_count_in * dim1,
+  //                     A_mats_rows_ptr[i] * dim1 * sizeof(__half),
+  //                     cudaMemcpyDeviceToDevice);
+  //                     // streams[i % num_streams]);
+  //                      
+  //   row_count_in += A_mats_rows_ptr[i];
+  //   row_count_out += A_mats_rows_ptr[i];
+
+  //   total_data += A_mats_rows_ptr[i] * dim1 * sizeof(__half);
+
+  //   int padding = 0;
+  //   if (A_mats_rows_ptr[i] % dim1 != 0) {
+  //     padding = dim1 - (A_mats_rows_ptr[i] % dim1);
+  //   }
+  //   row_count_out += padding;
+  // }
+
+  int nnz = num_edges * dim1;
+  int total_data = 0;
+  int *hA_mat_rows_ps = new int[num_rels + 1]();
+  int *hA_pad_rows_ps = new int[num_rels + 1]();
+  hA_mat_rows_ps[0] = 0;
+  hA_pad_rows_ps[0] = 0;
+  for (int i = 1; i <= num_rels + 1; i++) {
+    int padding = 0;
+    if (A_mats_rows_ptr[i - 1] % dim1 != 0) {
+      padding = dim1 - (A_mats_rows_ptr[i - 1] % dim1);
+    }
+    hA_pad_rows_ps[i] = hA_pad_rows_ps[i - 1] + (A_mats_rows_ptr[i - 1] + padding);
+    hA_mat_rows_ps[i] = hA_mat_rows_ps[i - 1] + A_mats_rows_ptr[i - 1];
+    total_data += A_mats_rows_ptr[i - 1] * dim1 * sizeof(__half);
+  }
+
+  int *dA_mat_rows_ps, *dA_pad_rows_ps, *dA_mats_rows_ptr;
+  CUDA_CALL( cudaMalloc(&dA_mat_rows_ps,  (num_rels + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_pad_rows_ps,  (num_rels + 1) * sizeof(int)) );
+  CUDA_CALL( cudaMalloc(&dA_mats_rows_ptr, num_rels * sizeof(int)) );
+  CUDA_CALL( cudaMemcpyAsync(dA_mat_rows_ps, hA_mat_rows_ps, (num_rels + 1) * sizeof(int), 
+                                cudaMemcpyHostToDevice) );
+  CUDA_CALL( cudaMemcpyAsync(dA_pad_rows_ps, hA_pad_rows_ps, (num_rels + 1) * sizeof(int), 
+                                cudaMemcpyHostToDevice) );
+  CUDA_CALL( cudaMemcpyAsync(dA_mats_rows_ptr, A_mats_rows_ptr, num_rels * sizeof(int), 
+                                cudaMemcpyHostToDevice) );
+
+  const int nt_aoff = FindNumThreads(num_rels);
+  const int nb_aoff = (num_rels + nt_aoff - 1) / nt_aoff;
+
   // cudaEvent_t start, stop;
   // cudaEventCreate(&start);
   // cudaEventCreate(&stop);
 
   // cudaEventRecord(start);
-  for (int i = 0; i < num_rels; i++) {
-    cudaMemcpyAsync(A_pad_ptr + row_count_out * dim1,
-                      A_mats_ptr + row_count_in * dim1,
-                      A_mats_rows_ptr[i] * dim1 * sizeof(__half),
-                      cudaMemcpyDeviceToDevice);
-                      // streams[i % num_streams]);
-                       
-    row_count_in += A_mats_rows_ptr[i];
-    row_count_out += A_mats_rows_ptr[i];
 
-    total_data += A_mats_rows_ptr[i] * dim1 * sizeof(__half);
+  CUDA_KERNEL_CALL( PadA2D, nb_aoff, nt_aoff, 0, thr_entry->stream, A_pad_ptr, A_mats_ptr, dA_mats_rows_ptr,
+                      dA_mat_rows_ps, dA_pad_rows_ps, nnz, num_rels, dim1 );
 
-    int padding = 0;
-    if (A_mats_rows_ptr[i] % dim1 != 0) {
-      padding = dim1 - (A_mats_rows_ptr[i] % dim1);
-    }
-    row_count_out += padding;
-  }
-//   cudaEventRecord(stop);
-//   cudaEventSynchronize(stop);
-// 
-//   float copytime = 0.0f;
-//   cudaEventElapsedTime(&copytime, start, stop);
-//   copytime = copytime / 1000; // seconds
-// 
+  // cudaEventRecord(stop);
+  // cudaEventSynchronize(stop);
+
+  // float copytime = 0.0f;
+  // cudaEventElapsedTime(&copytime, start, stop);
+  // copytime = copytime / 1000; // seconds
+
   // std::cout << "total_data: " << total_data << " copy_time: " << copytime << " bandwidth GB/s: " << (total_data / copytime / GB) << "\n";
-  // cudaDeviceSynchronize();
 
-  // for (int i = 0; i < num_streams; i++) {
-  //   cudaStreamDestroy(streams[i]);
-  // }
+  CUDA_CALL( cudaFree(dA_mat_rows_ps) );
+  CUDA_CALL( cudaFree(dA_pad_rows_ps) );
+  CUDA_CALL( cudaFree(dA_mats_rows_ptr) );
 }
 
 void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim1, int dim2) {
@@ -1056,12 +1111,11 @@ void unpad_c2d(NDArray C_mats, NDArray C_pad, NDArray C_mats_rows, int dim0, int
     row_count_in += C_mats_rows_ptr[i];
     row_count_out += C_mats_rows_ptr[i];
 
-    // int padding = 0;
-    // if (C_mats_rows_ptr[i] % dim1 != 0) {
-    //   padding = dim1 - (C_mats_rows_ptr[i] % dim1);
-    // }
-    // printf("i: %d rows: %d padding: %d dim1: %d\n", i, C_mats_rows_ptr[i], padding, dim1);
-    // row_count_out += padding;
+    int padding = 0;
+    if (C_mats_rows_ptr[i] % dim1 != 0) {
+      padding = dim1 - (C_mats_rows_ptr[i] % dim1);
+    }
+    row_count_out += padding;
   }
   cudaDeviceSynchronize();
 }
