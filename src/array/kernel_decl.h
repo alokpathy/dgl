@@ -38,7 +38,9 @@ void capi_gemms_half(NDArray A_mats, NDArray B_mats, NDArray C_mats,
 
 void pad_a(NDArray A3D, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int dim2);
 
-void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, int dim0, int dim1, int num_edges, int num_rels);
+void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, NDArray dA_mats_rows, 
+                NDArray A_pad_rows_ps, NDArray A_mat_rows_ps, 
+                int dim0, int dim1, int num_edges, int num_rels);
 
 void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim1, int dim2);
 

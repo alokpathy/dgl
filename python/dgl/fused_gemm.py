@@ -181,13 +181,16 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         torch.cuda.nvtx.range_push("nvtx-padding")
         torch.cuda.nvtx.range_push("nvtx-padding-iters")
         padding = 0
-        for i in range(len(a_mats_rows)):
+        for i in range(a_mats_rows.size(0)):
             if a_mats_rows[i].item() % block_dim != 0:
                 padding += block_dim - (a_mats_rows[i].item() % block_dim)
         torch.cuda.nvtx.range_pop()
 
         num_edges = torch.sum(a_mats_rows).item()
         a_pad = torch.cuda.HalfTensor(num_edges + padding, block_dim)
+        a_pad_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
+        a_mat_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
+        da_mats_rows = a_mats_rows.cuda()
 
         # a_mat_cat = torch.cat(a_mats).half()
         a_mat_cat = a_mats.half()
@@ -195,10 +198,14 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         arg_a_pad = to_dgl_nd(a_pad)
         arg_a_mat = to_dgl_nd(a_mat_cat)
         arg_a_mats_rows = to_dgl_nd(a_mats_rows)
+        arg_da_mats_rows = to_dgl_nd(da_mats_rows)
+        arg_a_pad_rows_ps = to_dgl_nd_for_write(a_pad_rows_ps)
+        arg_a_mat_rows_ps = to_dgl_nd_for_write(a_mat_rows_ps)
 
         start_time(preproc_start)
-        _CAPI_DGLKernelPadA2D(arg_a_pad, arg_a_mat, arg_a_mats_rows, num_edges + padding, \
-                                    block_dim, num_edges, a_mats_rows.size(0))
+        _CAPI_DGLKernelPadA2D(arg_a_pad, arg_a_mat, arg_a_mats_rows, arg_da_mats_rows, arg_a_pad_rows_ps, 
+                                    arg_a_mat_rows_ps, num_edges + padding, block_dim, num_edges, 
+                                    a_mats_rows.size(0))
         padding_time += stop_time(preproc_start, preproc_stop)
 
         torch.cuda.nvtx.range_pop()
@@ -222,7 +229,7 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
 
         torch.cuda.nvtx.range_push("nvtx-blocked-spmm")
         _CAPI_DGLKernelFGEMMBlockSpMM(arg_a_pad, arg_b_pad, arg_c_pad, arg_a_mats_rows, \
-                                        a_pad.size(0), a_pad.size(1), b_pad.size(1), block_dim, len(a_mats_rows))
+                                a_pad.size(0), a_pad.size(1), b_pad.size(1), block_dim, a_mats_rows.size(0))
         torch.cuda.nvtx.range_pop()
         
         torch.cuda.nvtx.range_push("nvtx-abc-to-float")
@@ -233,7 +240,7 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         c = torch.cuda.FloatTensor(num_edges, b_mats.size(1))
         arg_c = to_dgl_nd_for_write(c)
         arg_c_pad = F.to_dgl_nd(c_pad)
-        _CAPI_DGLKernelUnpadC2D(arg_c, arg_c_pad, arg_a_mats_rows, c.size(0), c.size(1), len(a_mats_rows))
+        _CAPI_DGLKernelUnpadC2D(arg_c, arg_c_pad, arg_a_mats_rows, c.size(0), c.size(1), a_mats_rows.size(0))
         # c = []
         # row_idx = 0
         # for i in range(len(a_mats_rows)):

@@ -474,14 +474,18 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadA2D")
     NDArray A_pad = args[0];
     NDArray A_mats = args[1];
     NDArray A_mats_rows = args[2];
+    NDArray dA_mats_rows = args[3];
+    NDArray A_pad_rows_ps = args[4];
+    NDArray A_mat_rows_ps = args[5];
 
-    int dim0 = args[3];
-    int dim1 = args[4];
-    int num_edges = args[5];
-    int num_rels = args[6];
+    int dim0 = args[6];
+    int dim1 = args[7];
+    int num_edges = args[8];
+    int num_rels = args[9];
     nvtxRangePop();
 
-    pad_a2d(A_pad, A_mats, A_mats_rows, dim0, dim1, num_edges, num_rels);
+    pad_a2d(A_pad, A_mats, A_mats_rows, dA_mats_rows, A_pad_rows_ps, A_mat_rows_ps, 
+                dim0, dim1, num_edges, num_rels);
   });
 
 DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelUnpadC")

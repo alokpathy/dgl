@@ -65,7 +65,7 @@ class BaseRGCN(nn.Module):
         layer_stop = th.cuda.Event(enable_timing=True)
 
         for i, layer in enumerate(self.layers):
-            if epoch == 8 and i == 1: # 5th epoch and first RelGraphConv layer
+            if epoch == 3 and i == 1: # 5th epoch and first RelGraphConv layer
                 th.cuda.profiler.cudart().cudaProfilerStart()
                 th.cuda.nvtx.range_push("nvtx-layer")
 
