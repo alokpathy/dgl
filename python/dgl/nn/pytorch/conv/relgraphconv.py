@@ -239,7 +239,7 @@ def bdd_lowmem_fgemm_blockspmm(h, weight, num_rels, num_bases, submat_in, submat
     for i in range(0, len(nonempty_rels), merge_count):
         if i + (merge_count - 1) < nonempty_rels.size(0):
             # etypes = nonempty_rels[i:(i + merge_count)]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(nonempty_rels)))
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types")
 
             # for j in etypes:
             #     elem_count += h_t[j].numel() + weight[j].numel()
@@ -474,11 +474,14 @@ def lowmem_fgemm_blockspmm(h, weight, num_rels, nonempty_rels, etypes):
     elem_count = 0
 
     msg = []
+    th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-preproc")
     merge_count = nonempty_rels.size(0)
-    for i in range(0, len(nonempty_rels), merge_count):
+    len_nonempty_rels = len(nonempty_rels)
+    th.cuda.nvtx.range_pop()
+    for i in range(0, len_nonempty_rels, merge_count):
         if i + (merge_count - 1) < nonempty_rels.size(0):
             # etypes = nonempty_rels[i:(i + merge_count)]
-            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types{}".format(str(nonempty_rels)))
+            th.cuda.nvtx.range_push("nvtx-lowmem-matmuls-fused-types")
 
             th.cuda.nvtx.range_push("nvtx-mergew")
             # weight_merged = [weight[j] for j in etypes]
@@ -771,16 +774,27 @@ class RelGraphConv(nn.Module):
             # Calculate msg @ W_r before put msg into edge.
             assert isinstance(etypes, list)
             th.cuda.nvtx.range_push("nvtx-lowmem-matmuls")
-            h_t = th.split(h, etypes)
+            th.cuda.nvtx.range_push("nvtx-lowmem-instantiation")
 
+            # Comment if using block spmm
+            th.cuda.nvtx.range_push("nvtx-lowmem-split")
+            h_t = th.split(h, etypes)
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
             nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
             etypes = th.IntTensor([i for i in etypes if i != 0])
+            th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_pop()
             
             # matmul
             # msg, bmm_time, dim_count = lowmem_matmul(h_t, weight, self.num_rels)
 
             # capi matmul
-            # msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
+            msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with spgemm
             # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
@@ -792,8 +806,8 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with block spmm
-            msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
-                                                                    nonempty_rels, etypes)
+            # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
+            #                                                         nonempty_rels, etypes)
 
             # fused gemm with bmm
             # msg, bmm_time, dim_count = lowmem_fgemm_batchmm(h_t, weight, self.num_rels, nonempty_rels, etypes)
@@ -859,10 +873,22 @@ class RelGraphConv(nn.Module):
             # A more memory-friendly implementation.
             # Calculate msg @ W_r before put msg into edge.
             assert isinstance(etypes, list)
-            h_t = th.split(h, etypes)
+            th.cuda.nvtx.range_push("nvtx-lowmem-instantiation")
+
+            # # comment if using block spmm
+            # th.cuda.nvtx.range_push("nvtx-lowmem-split")
+            # h_t = th.split(h, etypes)
+            # th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
             nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
             etypes = th.IntTensor([i for i in etypes if i != 0])
+            th.cuda.nvtx.range_pop()
             msg = []
+            th.cuda.nvtx.range_pop()
             th.cuda.nvtx.range_push("nvtx-lowmem-bdd-matmuls")
             # elem_count = 0
             # edge_count = 0
@@ -910,6 +936,7 @@ class RelGraphConv(nn.Module):
 
             th.cuda.nvtx.range_pop()
             # print(f"msg: {msg}")
+            # print(f"msg.sum: {msg.sum()}")
             # print(f"elem_count: {elem_count} edge_count: {edge_count}")
         else:
             # Use batched matmult
@@ -926,7 +953,7 @@ class RelGraphConv(nn.Module):
             msg = msg * edges.data['norm']
         return {'msg': msg}
 
-    def forward(self, g, feat, etypes, norm=None, epoch_fwd=0):
+    def forward(self, g, feat, etypes, norm=None, epoch_fwd=0, sorted_idx=None, sorted_etypes=None):
         global epoch
         """Forward computation.
 
@@ -972,21 +999,9 @@ class RelGraphConv(nn.Module):
                                ' in the graph. But got {} and {}.'.format(
                                    len(etypes), g.num_edges()))
             if self.low_mem and not (feat.dtype == th.int64 and feat.ndim == 1):
-                # Low-mem optimization is not enabled for node ID input. When enabled,
-                # it first sorts the graph based on the edge types (the sorting will not
-                # change the node IDs). It then converts the etypes tensor to an integer
-                # list, where each element is the number of edges of the type.
-                # Sort the graph based on the etypes
-                th.cuda.nvtx.range_push("nvtx-sort-edges")
-                sorted_etypes, index = th.sort(etypes)
-                th.cuda.nvtx.range_pop()
-
-                th.cuda.nvtx.range_push("nvtx-new-subgraph")
-                g = edge_subgraph(g, index, preserve_nodes=True)
-                th.cuda.nvtx.range_pop()
-
                 th.cuda.nvtx.range_push("nvtx-etypes-list")
                 # Create a new etypes to be an integer list of number of edges.
+                index = sorted_idx
                 pos = _searchsorted(sorted_etypes, th.arange(self.num_rels, device=g.device))
                 num = th.tensor([len(etypes)], device=g.device)
                 etypes = (th.cat([pos[1:], num]) - pos).tolist()

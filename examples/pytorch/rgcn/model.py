@@ -3,6 +3,7 @@ import torch.nn as nn
 
 import dgl
 from dgl.nn.pytorch import RelGraphConv
+from dgl import edge_subgraph
 
 timing = True
 
@@ -65,21 +66,38 @@ class BaseRGCN(nn.Module):
         layer_stop = th.cuda.Event(enable_timing=True)
 
         for i, layer in enumerate(self.layers):
-            if epoch == 3 and i == 1: # 5th epoch and first RelGraphConv layer
-                th.cuda.profiler.cudart().cudaProfilerStart()
-                th.cuda.nvtx.range_push("nvtx-layer")
-
-                start_time(layer_start)
+            if i == 0:
                 h = layer(g, h, r, norm, epoch_fwd=epoch)
-                layer_time = stop_time(layer_start, layer_stop)
-
-                th.cuda.nvtx.range_pop()
-                th.cuda.profiler.cudart().cudaProfilerStop()
-
-                print(f"layer_time: {layer_time}")
-                exit()
             else:
-                h = layer(g, h, r, norm, epoch_fwd=epoch)
+                # Low-mem optimization is not enabled for node ID input. When enabled,
+                # it first sorts the graph based on the edge types (the sorting will not
+                # change the node IDs). It then converts the etypes tensor to an integer
+                # list, where each element is the number of edges of the type.
+                # Sort the graph based on the etypes
+                th.cuda.nvtx.range_push("nvtx-sort-edges")
+                sorted_etypes, index = th.sort(r)
+                th.cuda.nvtx.range_pop()
+
+                th.cuda.nvtx.range_push("nvtx-new-subgraph")
+                g = edge_subgraph(g, index, preserve_nodes=True)
+                th.cuda.nvtx.range_pop()
+
+                if epoch == 5: # 5th epoch and first RelGraphConv layer
+                    th.cuda.profiler.cudart().cudaProfilerStart()
+                    th.cuda.nvtx.range_push("nvtx-layer")
+
+                    start_time(layer_start)
+                    # h = layer(g, h, r, norm, epoch_fwd=epoch)
+                    h = layer(g, h, r, norm, epoch_fwd=epoch, sorted_idx=index, sorted_etypes=sorted_etypes)
+                    layer_time = stop_time(layer_start, layer_stop)
+
+                    th.cuda.nvtx.range_pop()
+                    th.cuda.profiler.cudart().cudaProfilerStop()
+
+                    print(f"layer_time: {layer_time}")
+                    exit()
+                else:
+                    h = layer(g, h, r, norm, epoch_fwd=epoch, sorted_idx=index, sorted_etypes=sorted_etypes)
         return h
 
 def initializer(emb):

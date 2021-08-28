@@ -131,6 +131,19 @@ class EntityClassify(nn.Module):
             blocks = [self.g] * len(self.layers)
         h = feats
         for layer, block in zip(self.layers, blocks):
+            # Low-mem optimization is not enabled for node ID input. When enabled,
+            # it first sorts the graph based on the edge types (the sorting will not
+            # change the node IDs). It then converts the etypes tensor to an integer
+            # list, where each element is the number of edges of the type.
+            # Sort the graph based on the etypes
+            th.cuda.nvtx.range_push("nvtx-sort-edges")
+            sorted_etypes, index = th.sort(block.edata["etype"])
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-new-subgraph")
+            block = edge_subgraph(block, index, preserve_nodes=True)
+            th.cuda.nvtx.range_pop()
+
             if epoch == 0 and step == 5:
                 print(f"block: {block} h.size: {h.size()}", flush=True)
                 th.cuda.profiler.cudart().cudaProfilerStart()
@@ -143,7 +156,9 @@ class EntityClassify(nn.Module):
                 
                 th.cuda.nvtx.range_push("nvtx-layer")
                 start_time(layer_start)
-                h = layer(block, h, block.edata['etype'], block.edata['norm'])
+                # h = layer(block, h, block.edata['etype'], block.edata['norm'])
+                h = layer(block, h, block.edata['etype'], block.edata['norm'], sorted_idx=index, \
+                                sorted_etypes=sorted_etypes)
                 layer_time = stop_time(layer_start, layer_stop)
                 th.cuda.nvtx.range_pop()
                 th.cuda.profiler.cudart().cudaProfilerStop()

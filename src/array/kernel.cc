@@ -511,13 +511,33 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelUnpadC2D")
     NDArray C_mats = args[0];
     NDArray C_pad = args[1];
     NDArray C_mats_rows = args[2];
+    NDArray dC_mats_rows = args[3];
+    NDArray C_pad_rows_ps = args[4];
+    NDArray C_mat_rows_ps = args[5];
 
-    int dim0 = args[3];
-    int dim1 = args[4];
-    int num_rels = args[5];
+    int dim0 = args[6];
+    int dim1 = args[7];
+    int block_dim = args[8];
+    int num_rels = args[9];
     nvtxRangePop();
 
-    unpad_c2d(C_mats, C_pad, C_mats_rows, dim0, dim1, num_rels);
+    unpad_c2d(C_mats, C_pad, C_mats_rows, dC_mats_rows, C_pad_rows_ps, C_mat_rows_ps, 
+                    dim0, dim1, block_dim, num_rels);
+  });
+
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelComputePad")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray padding_arr = args[0];
+    NDArray dA_mats_rows = args[1];
+
+    int block_dim = args[2];
+    int num_rels = args[3];
+    nvtxRangePop();
+
+    int padding = compute_pad(padding_arr, dA_mats_rows, block_dim, num_rels);
+    *rv = padding;
   });
 
 #ifdef USE_TVM
