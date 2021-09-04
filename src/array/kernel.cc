@@ -540,6 +540,31 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelComputePad")
     *rv = padding;
   });
 
+DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadBlockSpMM")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+
+    nvtxRangePush("nvtx-capi-preproc");
+    NDArray A_pad = args[0];
+    NDArray A_mats = args[1];
+    NDArray B_pad = args[2];
+    NDArray C_pad = args[3];
+    NDArray A_mats_rows = args[4];
+    NDArray dA_mats_rows = args[5];
+    NDArray A_pad_rows_ps = args[6];
+    NDArray A_mat_rows_ps = args[7];
+    NDArray padding_arr = args[8];
+
+    int num_edges = args[9];
+    int M = args[10];
+    int K = args[11];
+    int N = args[12];
+    int num_rels = args[13];
+    nvtxRangePop();
+
+    pad_blockspmm(A_pad, A_mats, B_pad, C_pad, A_mats_rows, dA_mats_rows, A_pad_rows_ps, A_mat_rows_ps, 
+                    padding_arr, num_edges, M, K, N, num_rels);
+  });
+
 #ifdef USE_TVM
 DGL_REGISTER_GLOBAL("sparse._CAPI_FG_LoadModule")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {

@@ -45,7 +45,7 @@ class RGCN(BaseRGCN):
         act = F.relu if idx < self.num_hidden_layers - 1 else None
         return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "bdd",
         # return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
-                self.num_bases, activation=act, self_loop=True, low_mem=True,
+                self.num_bases, activation=act, self_loop=True, low_mem=False,
                 dropout=self.dropout)
 
 class LinkPredict(nn.Module):

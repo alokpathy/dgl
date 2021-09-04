@@ -729,7 +729,7 @@ class RelGraphConv(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def basis_message_func(self, edges, etypes):
+    def basis_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None):
         """Message function for basis regularizer.
 
         Parameters
@@ -781,13 +781,14 @@ class RelGraphConv(nn.Module):
             h_t = th.split(h, etypes)
             th.cuda.nvtx.range_pop()
 
-            th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
-            nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
-            th.cuda.nvtx.range_pop()
+            # th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
+            # nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
+            # th.cuda.nvtx.range_pop()
 
-            th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
-            etypes = th.IntTensor([i for i in etypes if i != 0])
-            th.cuda.nvtx.range_pop()
+            # th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
+            # etypes = th.IntTensor([i for i in etypes if i != 0])
+            # th.cuda.nvtx.range_pop()
+            etypes = nonempty_etypes
             th.cuda.nvtx.range_pop()
             
             # matmul
@@ -805,7 +806,7 @@ class RelGraphConv(nn.Module):
             # fused gemm with spmm
             # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h, weight, self.num_rels, nonempty_rels, etypes)
 
-            # fused gemm with block spmm
+            # # fused gemm with block spmm
             # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
             #                                                         nonempty_rels, etypes)
 
@@ -818,13 +819,13 @@ class RelGraphConv(nn.Module):
                 msg = th.cat(msg)
             # print(f"msg.size: {msg.size()}")
             # print(f"msg: {msg}")
+            # print(f"msg.sum: {msg.sum()}")
             th.cuda.nvtx.range_pop()
         else:
             bmm_start = th.cuda.Event(enable_timing=True)
             bmm_stop = th.cuda.Event(enable_timing=True)
 
             # Use batched matmult
-            th.cuda.nvtx.range_push("nvtx-highmem-batchmm")
             if isinstance(etypes, list):
                 etypes = th.repeat_interleave(th.arange(len(etypes), device=device),
                                               th.tensor(etypes, device=device))
@@ -846,7 +847,7 @@ class RelGraphConv(nn.Module):
             msg = msg * edges.data['norm']
         return {'msg': msg}
 
-    def bdd_message_func(self, edges, etypes):
+    def bdd_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None):
         global epoch
         """Message function for block-diagonal-decomposition regularizer.
 
@@ -880,13 +881,7 @@ class RelGraphConv(nn.Module):
             # h_t = th.split(h, etypes)
             # th.cuda.nvtx.range_pop()
 
-            th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
-            nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
-            th.cuda.nvtx.range_pop()
-
-            th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
-            etypes = th.IntTensor([i for i in etypes if i != 0])
-            th.cuda.nvtx.range_pop()
+            etypes = nonempty_etypes
             msg = []
             th.cuda.nvtx.range_pop()
             th.cuda.nvtx.range_push("nvtx-lowmem-bdd-matmuls")
@@ -953,7 +948,8 @@ class RelGraphConv(nn.Module):
             msg = msg * edges.data['norm']
         return {'msg': msg}
 
-    def forward(self, g, feat, etypes, norm=None, epoch_fwd=0, sorted_idx=None, sorted_etypes=None):
+    def forward(self, g, feat, etypes, norm=None, epoch_fwd=0, nonempty_rels=None, nonempty_etypes=None, 
+                        index=None):
         global epoch
         """Forward computation.
 
@@ -1001,10 +997,6 @@ class RelGraphConv(nn.Module):
             if self.low_mem and not (feat.dtype == th.int64 and feat.ndim == 1):
                 th.cuda.nvtx.range_push("nvtx-etypes-list")
                 # Create a new etypes to be an integer list of number of edges.
-                index = sorted_idx
-                pos = _searchsorted(sorted_etypes, th.arange(self.num_rels, device=g.device))
-                num = th.tensor([len(etypes)], device=g.device)
-                etypes = (th.cat([pos[1:], num]) - pos).tolist()
                 if norm is not None:
                     norm = norm[index]
                 th.cuda.nvtx.range_pop()
@@ -1027,8 +1019,8 @@ class RelGraphConv(nn.Module):
             # with profiler.record_function("rf-spmm"):
             th.cuda.nvtx.range_push("nvtx-message-passing")
             # message passing
-            g.update_all(functools.partial(self.message_func, etypes=etypes),
-                     fn.sum(msg='msg', out='h'))
+            g.update_all(functools.partial(self.message_func, etypes=etypes, nonempty_rels=nonempty_rels, \
+                            nonempty_etypes=nonempty_etypes), fn.sum(msg='msg', out='h'))
             th.cuda.nvtx.range_pop()
             # apply bias and activation
             node_repr = g.dstdata['h']

@@ -19,6 +19,17 @@ def stop_time(start_timer, stop_timer):
     else:
         return 0.0
 
+_TORCH_HAS_SEARCHSORTED = getattr(th, 'searchsorted', None)
+
+def _searchsorted(sorted_sequence, values):
+    # searchsorted is introduced to PyTorch in 1.6.0
+    if _TORCH_HAS_SEARCHSORTED:
+        return th.searchsorted(sorted_sequence, values)
+    else:
+        device = values.device
+        return th.from_numpy(np.searchsorted(sorted_sequence.cpu().numpy(),
+                                             values.cpu().numpy())).to(device)
+
 class BaseRGCN(nn.Module):
     def __init__(self, num_nodes, h_dim, out_dim, num_rels, num_bases,
                  num_hidden_layers=1, dropout=0,
@@ -76,10 +87,21 @@ class BaseRGCN(nn.Module):
                 # Sort the graph based on the etypes
                 th.cuda.nvtx.range_push("nvtx-sort-edges")
                 sorted_etypes, index = th.sort(r)
+                pos = _searchsorted(sorted_etypes, th.arange(self.num_rels, device=g.device))
+                num = th.tensor([len(r)], device=g.device)
+                etypes = (th.cat([pos[1:], num]) - pos).tolist()
                 th.cuda.nvtx.range_pop()
 
                 th.cuda.nvtx.range_push("nvtx-new-subgraph")
                 g = edge_subgraph(g, index, preserve_nodes=True)
+                th.cuda.nvtx.range_pop()
+
+                th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
+                nonempty_rels = th.cuda.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0])
+                th.cuda.nvtx.range_pop()
+
+                th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
+                nonempty_etypes = th.IntTensor([i for i in etypes if i != 0])
                 th.cuda.nvtx.range_pop()
 
                 if epoch == 5: # 5th epoch and first RelGraphConv layer
@@ -88,7 +110,8 @@ class BaseRGCN(nn.Module):
 
                     start_time(layer_start)
                     # h = layer(g, h, r, norm, epoch_fwd=epoch)
-                    h = layer(g, h, r, norm, epoch_fwd=epoch, sorted_idx=index, sorted_etypes=sorted_etypes)
+                    h = layer(g, h, etypes, norm, epoch_fwd=epoch, nonempty_rels=nonempty_rels, \
+                                    nonempty_etypes=nonempty_etypes, index=index)
                     layer_time = stop_time(layer_start, layer_stop)
 
                     th.cuda.nvtx.range_pop()
@@ -97,7 +120,8 @@ class BaseRGCN(nn.Module):
                     print(f"layer_time: {layer_time}")
                     exit()
                 else:
-                    h = layer(g, h, r, norm, epoch_fwd=epoch, sorted_idx=index, sorted_etypes=sorted_etypes)
+                    h = layer(g, h, etypes, norm, epoch_fwd=epoch, \
+                                    nonempty_rels=nonempty_rels, nonempty_etypes=nonempty_etypes, index=index)
         return h
 
 def initializer(emb):

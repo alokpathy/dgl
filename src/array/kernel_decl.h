@@ -49,6 +49,10 @@ void unpad_c2d(NDArray C_mats, NDArray C_pad, NDArray C_mats_rows, NDArray dC_ma
 
 int compute_pad(NDArray padding_arr, NDArray dA_mats_rows, int block_dim, int num_rels);
 
+void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, NDArray A_mats_rows, 
+                    NDArray dA_mats_rows, NDArray A_pad_rows_ps, NDArray A_mat_rows_ps, NDArray padding_arr, 
+                    int num_edges, int M, int K, int N, int num_rels);
+
 /*!
  * \brief Generalized Sparse Matrix Dense Matrix Multiplication on Csr format.
  */

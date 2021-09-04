@@ -18,6 +18,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 import dgl
 from dgl import DGLGraph
+from dgl import edge_subgraph
 from functools import partial
 
 from dgl.data.rdf import AIFBDataset, MUTAGDataset, BGSDataset, AMDataset
@@ -46,6 +47,17 @@ def stop_time(start_timer, stop_timer):
         return start_timer.elapsed_time(stop_timer)
     else:
         return 0.0
+
+_TORCH_HAS_SEARCHSORTED = getattr(th, 'searchsorted', None)
+
+def _searchsorted(sorted_sequence, values):
+    # searchsorted is introduced to PyTorch in 1.6.0
+    if _TORCH_HAS_SEARCHSORTED:
+        return th.searchsorted(sorted_sequence, values)
+    else:
+        device = values.device
+        return th.from_numpy(np.searchsorted(sorted_sequence.cpu().numpy(),
+                                             values.cpu().numpy())).to(device)
 
 class EntityClassify(nn.Module):
     """ Entity classification class for RGCN
@@ -138,10 +150,22 @@ class EntityClassify(nn.Module):
             # Sort the graph based on the etypes
             th.cuda.nvtx.range_push("nvtx-sort-edges")
             sorted_etypes, index = th.sort(block.edata["etype"])
+            pos = _searchsorted(sorted_etypes, th.arange(self.num_rels, device=block.device))
+            num = th.tensor([len(block.edata["etype"])], device=block.device)
+            etypes = (th.cat([pos[1:], num]) - pos).tolist()
+            # sorted_etypes = sorted_etypes.cuda()
             th.cuda.nvtx.range_pop()
 
             th.cuda.nvtx.range_push("nvtx-new-subgraph")
             block = edge_subgraph(block, index, preserve_nodes=True)
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
+            nonempty_rels = th.cuda.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0])
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
+            nonempty_etypes = th.IntTensor([i for i in etypes if i != 0])
             th.cuda.nvtx.range_pop()
 
             if epoch == 0 and step == 5:
@@ -157,8 +181,8 @@ class EntityClassify(nn.Module):
                 th.cuda.nvtx.range_push("nvtx-layer")
                 start_time(layer_start)
                 # h = layer(block, h, block.edata['etype'], block.edata['norm'])
-                h = layer(block, h, block.edata['etype'], block.edata['norm'], sorted_idx=index, \
-                                sorted_etypes=sorted_etypes)
+                h = layer(block, h, etypes, block.edata['norm'], nonempty_rels=nonempty_rels, \
+                                nonempty_etypes=nonempty_etypes, index=index)
                 layer_time = stop_time(layer_start, layer_stop)
                 th.cuda.nvtx.range_pop()
                 th.cuda.profiler.cudart().cudaProfilerStop()
@@ -167,7 +191,8 @@ class EntityClassify(nn.Module):
                 exit() 
             else:
                 block = block.to(self.device)
-                h = layer(block, h, block.edata['etype'], block.edata['norm'])
+                h = layer(block, h, etypes, block.edata['norm'], nonempty_rels=nonempty_rels, \
+                                nonempty_etypes=nonempty_etypes, index=index)
         return h
 
 def gen_norm(g):

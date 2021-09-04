@@ -1,4 +1,4 @@
-# # # link_predict experiments
+# # link_predict experiments
 # for i in 16 32 64 128
 #     do
 #         for j in 100 1000 10000 100000
@@ -14,9 +14,9 @@ for i in 16 32 64 128
     do
         for j in 100 1000 10000 100000
             do
-                echo "python entity_classify_mp.py -d ogbn-mag --testing --lr 0.01 --num-worker 1 --gpu 0 --dropout 0.7  --n-epochs 20 --batch-size $j --n-hidden $i"
+                echo "python entity_classify_mp.py -d ogbn-mag --testing --lr 0.01 --num-worker 1 --gpu 0 --dropout 0.7  --n-epochs 20 --batch-size $j --n-hidden $i --fanout 16,16"
 
-                python entity_classify_mp.py -d ogbn-mag --testing --lr 0.01 --num-worker 1 --gpu 0 --dropout 0.7  --n-epochs 20 --batch-size $j --n-hidden $i
+                python entity_classify_mp.py -d ogbn-mag --testing --lr 0.01 --num-worker 1 --gpu 0 --dropout 0.7  --n-epochs 20 --batch-size $j --n-hidden $i --fanout 16,16
 
             done
     done
