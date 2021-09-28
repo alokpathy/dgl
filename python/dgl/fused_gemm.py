@@ -190,7 +190,7 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         padding = _CAPI_DGLKernelComputePad(arg_padding_arr, arg_da_mats_rows, block_dim, a_mats_rows.size(0))
         torch.cuda.nvtx.range_pop()
 
-        torch.cuda.nvtx.range_push("nvtx-concstruct-padarrs")
+        torch.cuda.nvtx.range_push("nvtx-construct-padarrs")
         num_edges = torch.sum(a_mats_rows).item()
         a_pad = torch.cuda.HalfTensor(num_edges + padding, block_dim)
         a_pad_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)

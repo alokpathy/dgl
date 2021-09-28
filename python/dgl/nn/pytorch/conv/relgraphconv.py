@@ -795,7 +795,7 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_matmul(h_t, weight, self.num_rels)
 
             # capi matmul
-            msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
+            # msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with spgemm
             # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
@@ -807,8 +807,8 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # # fused gemm with block spmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
-            #                                                         nonempty_rels, etypes)
+            msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
+                                                                    nonempty_rels, etypes)
 
             # fused gemm with bmm
             # msg, bmm_time, dim_count = lowmem_fgemm_batchmm(h_t, weight, self.num_rels, nonempty_rels, etypes)
@@ -951,6 +951,7 @@ class RelGraphConv(nn.Module):
     def forward(self, g, feat, etypes, norm=None, epoch_fwd=0, nonempty_rels=None, nonempty_etypes=None, 
                         index=None):
         global epoch
+        th.cuda.nvtx.range_push("nvtx-layer")
         """Forward computation.
 
         Parameters
@@ -1048,6 +1049,7 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_push("nvtx-dropout")
             node_repr = self.dropout(node_repr)
             th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_pop() # nvtx-layer
             return node_repr
 
 _TORCH_HAS_SEARCHSORTED = getattr(th, 'searchsorted', None)

@@ -178,13 +178,11 @@ class EntityClassify(nn.Module):
                 layer_start = th.cuda.Event(enable_timing=True)
                 layer_stop = th.cuda.Event(enable_timing=True)
                 
-                th.cuda.nvtx.range_push("nvtx-layer")
                 start_time(layer_start)
                 # h = layer(block, h, block.edata['etype'], block.edata['norm'])
                 h = layer(block, h, etypes, block.edata['norm'], nonempty_rels=nonempty_rels, \
                                 nonempty_etypes=nonempty_etypes, index=index)
                 layer_time = stop_time(layer_start, layer_stop)
-                th.cuda.nvtx.range_pop()
                 th.cuda.profiler.cudart().cudaProfilerStop()
                 print(f"layer_time: {layer_time}")
                
