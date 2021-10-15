@@ -10,6 +10,7 @@ from .. import utils
 from ....base import DGLError
 from .... import edge_subgraph
 from ....fused_gemm import capi_gemms, fused_gemm, fused_gemm_spmm, fused_gemm_blockspmm, fused_gemm_batchmm
+from ....ops.spmm import gspmm
 
 import torch.autograd.profiler as profiler
 
@@ -729,7 +730,7 @@ class RelGraphConv(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def basis_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None):
+    def basis_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None, norm=None):
         """Message function for basis regularizer.
 
         Parameters
@@ -757,7 +758,10 @@ class RelGraphConv(nn.Module):
             weight = self.weight
         th.cuda.nvtx.range_pop()
 
-        h = edges.src['h']
+        if isinstance(edges, th.Tensor):
+            h = edges
+        else:
+            h = edges.src['h']
         device = h.device
 
         if h.dtype == th.int64 and h.ndim == 1:
@@ -777,13 +781,13 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_push("nvtx-lowmem-instantiation")
 
             # Comment if using block spmm
-            th.cuda.nvtx.range_push("nvtx-lowmem-split")
-            h_t = th.split(h, etypes)
-            th.cuda.nvtx.range_pop()
-
-            # th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
-            # nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
+            # th.cuda.nvtx.range_push("nvtx-lowmem-split")
+            # h_t = th.split(h, etypes)
             # th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-lowmem-nonemptyrels")
+            nonempty_rels = th.LongTensor([i for i in range(len(etypes)) if etypes[i] != 0]).cuda()
+            th.cuda.nvtx.range_pop()
 
             # th.cuda.nvtx.range_push("nvtx-lowmem-etypes")
             # etypes = th.IntTensor([i for i in etypes if i != 0])
@@ -817,9 +821,6 @@ class RelGraphConv(nn.Module):
                 print(f"bmm_time: {bmm_time} dim_count: {dim_count}", flush=True)
             if not th.is_tensor(msg):
                 msg = th.cat(msg)
-            # print(f"msg.size: {msg.size()}")
-            # print(f"msg: {msg}")
-            # print(f"msg.sum: {msg.sum()}")
             th.cuda.nvtx.range_pop()
         else:
             bmm_start = th.cuda.Event(enable_timing=True)
@@ -843,8 +844,14 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_pop()
             # print(f"etypes.size: {etypes.size()} h.size: {h.unsqueeze(1).size()} weight.size: {weight.size()} msg.size: {msg.size()}")
 
-        if 'norm' in edges.data:
+        if norm is not None and isinstance(norm, th.Tensor):
+            msg = msg * norm
+        elif 'norm' in edges.data:
             msg = msg * edges.data['norm']
+
+        print(f"msg.size: {msg.size()}")
+        print(f"msg: {msg}")
+        print(f"msg.sum: {msg.sum()}")
         return {'msg': msg}
 
     def bdd_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None):
@@ -930,8 +937,8 @@ class RelGraphConv(nn.Module):
                                                         nonempty_rels, etypes)
 
             th.cuda.nvtx.range_pop()
-            # print(f"msg: {msg}")
-            # print(f"msg.sum: {msg.sum()}")
+            print(f"msg: {msg}")
+            print(f"msg.sum: {msg.sum()}")
             # print(f"elem_count: {elem_count} edge_count: {edge_count}")
         else:
             # Use batched matmult
@@ -948,10 +955,10 @@ class RelGraphConv(nn.Module):
             msg = msg * edges.data['norm']
         return {'msg': msg}
 
-    def forward(self, g, feat, etypes, norm=None, epoch_fwd=0, nonempty_rels=None, nonempty_etypes=None, 
-                        index=None):
+    def forward(self, g, feat, etypes, norm=None, epoch_fwd=0, nonempty_rels=None, 
+                    nonempty_etypes=None, index=None):
+
         global epoch
-        th.cuda.nvtx.range_push("nvtx-layer")
         """Forward computation.
 
         Parameters
@@ -1018,13 +1025,26 @@ class RelGraphConv(nn.Module):
                 th.cuda.nvtx.range_pop()
 
             # with profiler.record_function("rf-spmm"):
-            th.cuda.nvtx.range_push("nvtx-message-passing")
+            th.cuda.nvtx.range_push("nvtx-message-func")
+            src, dst = g.edges()
+            edge_data = g.ndata['h']["_N"][src]
+
             # message passing
-            g.update_all(functools.partial(self.message_func, etypes=etypes, nonempty_rels=nonempty_rels, \
-                            nonempty_etypes=nonempty_etypes), fn.sum(msg='msg', out='h'))
+            # g.update_all(functools.partial(self.message_func, etypes=etypes, nonempty_rels=nonempty_rels, \
+            #                 nonempty_etypes=nonempty_etypes), fn.sum(msg='msg', out='h'))
+            updated_edge_data = self.message_func(edge_data, etypes=etypes, nonempty_rels=nonempty_rels, \
+                                                        nonempty_etypes=nonempty_etypes, norm=norm)["msg"]
             th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-spmm")
+            node_repr = gspmm(g, "copy_rhs", "sum", None, updated_edge_data)
+            g.dstdata['h'] = node_repr
+
+            th.cuda.nvtx.range_pop()
+
             # apply bias and activation
             node_repr = g.dstdata['h']
+
             if self.layer_norm:
                 # with profiler.record_function("rf-norm"):
                 th.cuda.nvtx.range_push("nvtx-norm")
@@ -1049,7 +1069,6 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_push("nvtx-dropout")
             node_repr = self.dropout(node_repr)
             th.cuda.nvtx.range_pop()
-            th.cuda.nvtx.range_pop() # nvtx-layer
             return node_repr
 
 _TORCH_HAS_SEARCHSORTED = getattr(th, 'searchsorted', None)

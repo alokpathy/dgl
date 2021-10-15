@@ -8,6 +8,8 @@ from . import backend as F
 from .base import DGLError, dgl_warning
 from .init import zero_initializer
 
+import torch
+
 class Scheme(namedtuple('Scheme', ['shape', 'dtype'])):
     """The column scheme.
 
@@ -259,7 +261,10 @@ class Column(object):
                 kwargs = {}
                 if self.device is not None:
                     kwargs = self.device[1]
+
+                torch.cuda.nvtx.range_push("nvtx-copyto")
                 rowids = F.copy_to(rowids, F.context(self.index), **kwargs)
+                torch.cuda.nvtx.range_pop()
             return Column(self.storage, self.scheme, F.gather_row(self.index, rowids), self.device)
 
     @staticmethod
@@ -618,8 +623,12 @@ class Frame(MutableMapping):
         Frame
             A new subframe.
         """
+        torch.cuda.nvtx.range_push("nvtx-subcols")
         subcols = {k : col.subcolumn(rowids) for k, col in self._columns.items()}
+        torch.cuda.nvtx.range_pop()
+        torch.cuda.nvtx.range_push("nvtx-subf`")
         subf = Frame(subcols, len(rowids))
+        torch.cuda.nvtx.range_pop()
         subf._initializers = self._initializers
         subf._default_initializer = self._default_initializer
         return subf
