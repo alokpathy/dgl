@@ -300,7 +300,7 @@ def lowmem_matmul(h_t, weight, num_rels):
 
     return msg, bmm_time, dim_count
 
-def lowmem_capi_matmul(h_t, weight, num_rels, nonempty_rels, etypes):
+def lowmem_capi_matmul(h, weight, num_rels, nonempty_rels, etypes):
     edge_count = 0
     elem_count = 0
 
@@ -321,8 +321,9 @@ def lowmem_capi_matmul(h_t, weight, num_rels, nonempty_rels, etypes):
     th.cuda.nvtx.range_pop()
 
     th.cuda.nvtx.range_push("nvtx-preproc-mergeh")
-    nonempty_rels = nonempty_rels.cpu()
-    h_t_merged = [h_t[j] for j in nonempty_rels]
+    # nonempty_rels = nonempty_rels.cpu()
+    # h_t_merged = [h_t[j] for j in nonempty_rels]
+    h_t_merged = h
     th.cuda.nvtx.range_pop()
     th.cuda.nvtx.range_pop()
     results = capi_gemms(h_t_merged, weight_merged, etypes)
@@ -780,7 +781,7 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_push("nvtx-lowmem-matmuls")
             th.cuda.nvtx.range_push("nvtx-lowmem-instantiation")
 
-            # Comment if using block spmm
+            # # Comment if using block spmm
             # th.cuda.nvtx.range_push("nvtx-lowmem-split")
             # h_t = th.split(h, etypes)
             # th.cuda.nvtx.range_pop()
@@ -800,6 +801,7 @@ class RelGraphConv(nn.Module):
 
             # capi matmul
             # msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
+            msg, bmm_time, dim_count = lowmem_capi_matmul(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with spgemm
             # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
@@ -811,8 +813,8 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # # fused gemm with block spmm
-            msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
-                                                                    nonempty_rels, etypes)
+            # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
+            #                                                         nonempty_rels, etypes)
 
             # fused gemm with bmm
             # msg, bmm_time, dim_count = lowmem_fgemm_batchmm(h_t, weight, self.num_rels, nonempty_rels, etypes)
@@ -849,9 +851,9 @@ class RelGraphConv(nn.Module):
         elif 'norm' in edges.data:
             msg = msg * edges.data['norm']
 
-        print(f"msg.size: {msg.size()}")
-        print(f"msg: {msg}")
-        print(f"msg.sum: {msg.sum()}")
+        # print(f"msg.size: {msg.size()}")
+        # print(f"msg: {msg}")
+        # print(f"msg.sum: {msg.sum()}")
         return {'msg': msg}
 
     def bdd_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None):
@@ -996,6 +998,7 @@ class RelGraphConv(nn.Module):
         to get a sorted homogeneous graph from a heterogeneous graph. Pass ``return_count=True``
         to it to get the ``etypes`` in integer list.
         """
+        th.cuda.nvtx.range_push("nvtx-layer")
         epoch = epoch_fwd
         if isinstance(etypes, th.Tensor):
             if len(etypes) != g.num_edges():
@@ -1025,20 +1028,22 @@ class RelGraphConv(nn.Module):
                 th.cuda.nvtx.range_pop()
 
             # with profiler.record_function("rf-spmm"):
-            th.cuda.nvtx.range_push("nvtx-message-func")
-            src, dst = g.edges()
-            edge_data = g.ndata['h']["_N"][src]
+            th.cuda.nvtx.range_push("nvtx-message-passing")
+            # th.cuda.nvtx.range_push("nvtx-get-edge-data")
+            # src, dst = g.edges()
+            # edge_data = g.ndata['h']["_N"][src]
+            # th.cuda.nvtx.range_pop()
 
             # message passing
-            # g.update_all(functools.partial(self.message_func, etypes=etypes, nonempty_rels=nonempty_rels, \
-            #                 nonempty_etypes=nonempty_etypes), fn.sum(msg='msg', out='h'))
-            updated_edge_data = self.message_func(edge_data, etypes=etypes, nonempty_rels=nonempty_rels, \
-                                                        nonempty_etypes=nonempty_etypes, norm=norm)["msg"]
-            th.cuda.nvtx.range_pop()
+            g.update_all(functools.partial(self.message_func, etypes=etypes, nonempty_rels=nonempty_rels, \
+                            nonempty_etypes=nonempty_etypes), fn.sum(msg='msg', out='h'))
+            # updated_edge_data = self.message_func(edge_data, etypes=etypes, nonempty_rels=nonempty_rels, \
+            #                                             nonempty_etypes=nonempty_etypes, norm=norm)["msg"]
+            # th.cuda.nvtx.range_pop()
 
-            th.cuda.nvtx.range_push("nvtx-spmm")
-            node_repr = gspmm(g, "copy_rhs", "sum", None, updated_edge_data)
-            g.dstdata['h'] = node_repr
+            # th.cuda.nvtx.range_push("nvtx-spmm")
+            # node_repr = gspmm(g, "copy_rhs", "sum", None, updated_edge_data)
+            # g.dstdata['h'] = node_repr
 
             th.cuda.nvtx.range_pop()
 
@@ -1069,6 +1074,7 @@ class RelGraphConv(nn.Module):
             th.cuda.nvtx.range_push("nvtx-dropout")
             node_repr = self.dropout(node_repr)
             th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_pop() # nvtx-layer
             return node_repr
 
 _TORCH_HAS_SEARCHSORTED = getattr(th, 'searchsorted', None)

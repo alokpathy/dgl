@@ -383,9 +383,9 @@ class CAPIGEMMs(torch.autograd.Function):
         # torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-cat-mats")
-        # b_mats = torch.cat(b_mats)
-        b_mats = b_mats.view(a_mats[0].size(1), -1)
-        a_mats = torch.cat(a_mats)
+        # b_mats = b_mats.view(a_mats[0].size(1), -1)
+        b_mats = b_mats.view(a_mats.size(1), -1)
+        # a_mats = torch.cat(a_mats)
         torch.cuda.nvtx.range_pop()
 
         # torch.cuda.nvtx.range_push("nvtx-mats-to-half")
@@ -414,7 +414,7 @@ class CAPIGEMMs(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dC):
-        return [None] * len(dC)
+        return None, None, None
 
 def fused_gemm(a1, b1, a2, b2):
     return FusedGEMM.apply(a1, b1, a2, b2)
