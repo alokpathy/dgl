@@ -801,7 +801,7 @@ class RelGraphConv(nn.Module):
 
             # capi matmul
             # msg, bmm_time, dim_count = lowmem_capi_matmul(h_t, weight, self.num_rels, nonempty_rels, etypes)
-            msg, bmm_time, dim_count = lowmem_capi_matmul(h, weight, self.num_rels, nonempty_rels, etypes)
+            # msg, bmm_time, dim_count = lowmem_capi_matmul(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # fused gemm with spgemm
             # msg, bmm_time, dim_count = lowmem_fgemm_spgemm(h_t, weight, self.num_rels)
@@ -813,8 +813,8 @@ class RelGraphConv(nn.Module):
             # msg, bmm_time, dim_count = lowmem_fgemm_spmm(h, weight, self.num_rels, nonempty_rels, etypes)
 
             # # fused gemm with block spmm
-            # msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
-            #                                                         nonempty_rels, etypes)
+            msg, bmm_time, dim_count = lowmem_fgemm_blockspmm(h, weight, self.num_rels, \
+                                                                    nonempty_rels, etypes)
 
             # fused gemm with bmm
             # msg, bmm_time, dim_count = lowmem_fgemm_batchmm(h_t, weight, self.num_rels, nonempty_rels, etypes)
@@ -1029,21 +1029,24 @@ class RelGraphConv(nn.Module):
 
             # with profiler.record_function("rf-spmm"):
             th.cuda.nvtx.range_push("nvtx-message-passing")
-            # th.cuda.nvtx.range_push("nvtx-get-edge-data")
-            # src, dst = g.edges()
-            # edge_data = g.ndata['h']["_N"][src]
-            # th.cuda.nvtx.range_pop()
+            th.cuda.nvtx.range_push("nvtx-get-edge-data")
+            src, dst = g.edges()
+            edge_data = g.ndata['h']["_N"][src]
+            th.cuda.nvtx.range_pop()
 
-            # message passing
-            g.update_all(functools.partial(self.message_func, etypes=etypes, nonempty_rels=nonempty_rels, \
-                            nonempty_etypes=nonempty_etypes), fn.sum(msg='msg', out='h'))
-            # updated_edge_data = self.message_func(edge_data, etypes=etypes, nonempty_rels=nonempty_rels, \
-            #                                             nonempty_etypes=nonempty_etypes, norm=norm)["msg"]
-            # th.cuda.nvtx.range_pop()
+            # # message passing
+            # g.update_all(functools.partial(self.message_func, etypes=etypes, \
+            #         nonempty_rels=nonempty_rels, nonempty_etypes=nonempty_etypes), \
+            #         fn.sum(msg='msg', out='h'))
 
-            # th.cuda.nvtx.range_push("nvtx-spmm")
-            # node_repr = gspmm(g, "copy_rhs", "sum", None, updated_edge_data)
-            # g.dstdata['h'] = node_repr
+            updated_edge_data = self.message_func(edge_data, etypes=etypes, \
+                        nonempty_rels=nonempty_rels, nonempty_etypes=nonempty_etypes, \
+                        norm=norm)["msg"]
+            th.cuda.nvtx.range_pop()
+
+            th.cuda.nvtx.range_push("nvtx-spmm")
+            node_repr = gspmm(g, "copy_rhs", "sum", None, updated_edge_data)
+            g.dstdata['h'] = node_repr
 
             th.cuda.nvtx.range_pop()
 

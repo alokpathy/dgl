@@ -266,6 +266,7 @@ if(BUILD_TORCH)
       DEPENDS ${BUILD_SCRIPT}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tensoradapter/pytorch)
   endif(MSVC)
+  message(STATUS "Build with Torch support")
   add_dependencies(dgl tensoradapter_pytorch)
 endif(BUILD_TORCH)
 

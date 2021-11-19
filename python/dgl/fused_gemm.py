@@ -193,8 +193,6 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         torch.cuda.nvtx.range_push("nvtx-construct-padarrs")
         num_edges = torch.sum(a_mats_rows).item()
         a_pad = torch.cuda.HalfTensor(num_edges + padding, block_dim)
-        a_pad_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
-        a_mat_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
         torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-atohalf")
@@ -205,40 +203,21 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         arg_a_pad = to_dgl_nd(a_pad)
         arg_a_mat = to_dgl_nd(a_mat_cat)
         arg_a_mats_rows = to_dgl_nd(a_mats_rows)
-        arg_a_pad_rows_ps = to_dgl_nd_for_write(a_pad_rows_ps)
-        arg_a_mat_rows_ps = to_dgl_nd_for_write(a_mat_rows_ps)
         torch.cuda.nvtx.range_pop()
-
-        # start_time(preproc_start)
-        # _CAPI_DGLKernelPadA2D(arg_a_pad, arg_a_mat, arg_a_mats_rows, arg_da_mats_rows, arg_a_pad_rows_ps, 
-        #                             arg_a_mat_rows_ps, num_edges + padding, block_dim, num_edges, 
-        #                             a_mats_rows.size(0))
-        # padding_time += stop_time(preproc_start, preproc_stop)
-
-        # torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-concat-mats")
         b_pad = b_mats.half()
-        # ctx.save_for_backward(a_pad, b_pad)
-        # ctx.num_blocks = len(a_mats_rows)
         arg_b_pad = to_dgl_nd(b_pad)
         torch.cuda.nvtx.range_pop()
 
         torch.cuda.nvtx.range_push("nvtx-construct-c")
-        # ctx_cuda = F.context(b_pad)
         c_pad = torch.cuda.HalfTensor(a_pad.size(0), b_pad.size(1))
-
         arg_c_pad = to_dgl_nd_for_write(c_pad)
         torch.cuda.nvtx.range_pop()
 
-        # torch.cuda.nvtx.range_push("nvtx-blocked-spmm")
-        # _CAPI_DGLKernelFGEMMBlockSpMM(arg_a_pad, arg_b_pad, arg_c_pad, arg_a_mats_rows, \
-        #                         a_pad.size(0), a_pad.size(1), b_pad.size(1), block_dim, a_mats_rows.size(0))
-        # torch.cuda.nvtx.range_pop()
-
         torch.cuda.nvtx.range_push("nvtx-padblockspmm")
         _CAPI_DGLKernelPadBlockSpMM(arg_a_pad, arg_a_mat, arg_b_pad, arg_c_pad, arg_a_mats_rows, \
-                                        arg_da_mats_rows, arg_a_pad_rows_ps, arg_a_mat_rows_ps, arg_padding_arr, \
+                                        arg_da_mats_rows, arg_padding_arr, \
                                         num_edges, num_edges + padding, a_pad.size(1), b_pad.size(1), \
                                         a_mats_rows.size(0))
         torch.cuda.nvtx.range_pop()

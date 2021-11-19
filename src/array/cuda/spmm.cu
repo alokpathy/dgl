@@ -922,10 +922,11 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, 
 }
 
 void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, NDArray A_mats_rows, 
-                    NDArray dA_mats_rows, NDArray A_pad_rows_ps, NDArray A_mat_rows_ps, NDArray padding_arr,
+                    NDArray dA_mats_rows, NDArray padding_arr,
                     int num_edges, int M, int K, int N, int num_rels) {
 
   // padding
+  const auto& ctx = A_pad->ctx;
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
   int dim0 = M;
   int dim1 = K;
@@ -933,8 +934,16 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, 
   __half *A_pad_ptr = (__half *) A_pad->data;
   __half *A_mats_ptr = (__half *) A_mats->data;
 
-  int *dA_pad_rows_ps = (int *) A_pad_rows_ps->data;
-  int *dA_mat_rows_ps = (int *) A_mat_rows_ps->data;
+  // int *dA_pad_rows_ps = (int *) A_pad_rows_ps->data;
+  // int *dA_mat_rows_ps = (int *) A_mat_rows_ps->data;
+  nvtxRangePushA("nvtx-instantiate-ndarray");
+  NDArray dA_pad_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
+  NDArray dA_mat_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
+  nvtxRangePop();
+
+  int *dA_pad_rows_ps = (int *) dA_pad_rows_ps_arr->data;
+  int *dA_mat_rows_ps = (int *) dA_mat_rows_ps_arr->data;
+
   int *A_mats_rows_ptr = (int *) A_mats_rows->data;
   int *dA_mats_rows_ptr = (int *) dA_mats_rows->data;
   int *padding_arr_ptr = (int *) padding_arr->data;
@@ -950,6 +959,11 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, 
 
   nvtxRangePushA("nvtx-compute-ps");
   thrust::exclusive_scan(thrust::device, dA_mats_rows_ptr, dA_mats_rows_ptr + num_rels, dA_mat_rows_ps);
+
+  // cudaMemcpy(hA_mat_rows_ps, dA_mat_rows_ps, (num_rels + 1) * sizeof(int), cudaMemcpyDeviceToHost);
+  // for (int i = 0; i < 5; i++) {
+  //   printf("i: %d dA_mat_rows_ps: %d\n", i, hA_mat_rows_ps[i]);
+  // }
 
   const int nt_vecadd = FindNumThreads(num_rels);
   const int nb_vecadd = (num_rels + nt_vecadd - 1) / nt_vecadd;
