@@ -224,20 +224,6 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
                                         a_mats_rows.size(0), arg_c)
         torch.cuda.nvtx.range_pop()
         
-        # torch.cuda.nvtx.range_push("nvtx-abc-to-float")
-        # c_pad_float = c_pad.float()
-        # torch.cuda.nvtx.range_pop()
-
-        # torch.cuda.nvtx.range_push("nvtx-extractc")
-        # c_pad_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
-        # c_mat_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
-        # arg_c_pad_float = to_dgl_nd(c_pad_float)
-        # arg_c_pad_rows_ps = to_dgl_nd_for_write(c_pad_rows_ps)
-        # arg_c_mat_rows_ps = to_dgl_nd_for_write(c_mat_rows_ps)
-        # _CAPI_DGLKernelUnpadC2D(arg_c, arg_c_pad_float, arg_a_mats_rows, arg_da_mats_rows, arg_c_pad_rows_ps,
-        #                             arg_c_mat_rows_ps, c.size(0), c.size(1), block_dim, a_mats_rows.size(0))
-        # torch.cuda.nvtx.range_pop()
-
         if timing and first_step:
             first_step = False
             preproc_time = 0.0

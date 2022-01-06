@@ -851,9 +851,9 @@ class RelGraphConv(nn.Module):
         elif 'norm' in edges.data:
             msg = msg * edges.data['norm']
 
-        print(f"msg.size: {msg.size()}")
-        print(f"msg: {msg}")
-        print(f"msg.sum: {msg.sum()}")
+        # print(f"msg.size: {msg.size()}")
+        # print(f"msg: {msg}")
+        # print(f"msg.sum: {msg.sum()}")
         return {'msg': msg}
 
     def bdd_message_func(self, edges, etypes, nonempty_rels=None, nonempty_etypes=None):
