@@ -51,7 +51,7 @@ int compute_pad(NDArray padding_arr, NDArray dA_mats_rows, int block_dim, int nu
 
 void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, NDArray A_mats_rows, 
                     NDArray dA_mats_rows, NDArray padding_arr, 
-                    int num_edges, int M, int K, int N, int num_rels);
+                    int num_edges, int M, int K, int N, int num_rels, NDArray C_mats);
 
 /*!
  * \brief Generalized Sparse Matrix Dense Matrix Multiplication on Csr format.

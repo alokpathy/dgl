@@ -215,39 +215,28 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         arg_c_pad = to_dgl_nd_for_write(c_pad)
         torch.cuda.nvtx.range_pop()
 
+        c = torch.cuda.FloatTensor(num_edges, b_mats.size(1))
+        arg_c = to_dgl_nd_for_write(c)
         torch.cuda.nvtx.range_push("nvtx-padblockspmm")
         _CAPI_DGLKernelPadBlockSpMM(arg_a_pad, arg_a_mat, arg_b_pad, arg_c_pad, arg_a_mats_rows, \
                                         arg_da_mats_rows, arg_padding_arr, \
                                         num_edges, num_edges + padding, a_pad.size(1), b_pad.size(1), \
-                                        a_mats_rows.size(0))
+                                        a_mats_rows.size(0), arg_c)
         torch.cuda.nvtx.range_pop()
         
-        torch.cuda.nvtx.range_push("nvtx-abc-to-float")
-        c_pad_float = c_pad.float()
-        torch.cuda.nvtx.range_pop()
+        # torch.cuda.nvtx.range_push("nvtx-abc-to-float")
+        # c_pad_float = c_pad.float()
+        # torch.cuda.nvtx.range_pop()
 
-        torch.cuda.nvtx.range_push("nvtx-extractc")
-        c = torch.cuda.FloatTensor(num_edges, b_mats.size(1))
-        c_pad_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
-        c_mat_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
-        arg_c = to_dgl_nd_for_write(c)
-        arg_c_pad_float = to_dgl_nd(c_pad_float)
-        arg_c_pad_rows_ps = to_dgl_nd_for_write(c_pad_rows_ps)
-        arg_c_mat_rows_ps = to_dgl_nd_for_write(c_mat_rows_ps)
-        _CAPI_DGLKernelUnpadC2D(arg_c, arg_c_pad_float, arg_a_mats_rows, arg_da_mats_rows, arg_c_pad_rows_ps,
-                                    arg_c_mat_rows_ps, c.size(0), c.size(1), block_dim, a_mats_rows.size(0))
-        # c = []
-        # row_idx = 0
-        # for i in range(len(a_mats_rows)):
-        #     if a_mats_rows[i] % block_dim == 0:
-        #         padding = 0
-        #     else:
-        #         padding = block_dim - (a_mats_rows[i] % block_dim)
-        #     output_ci = c_pad_float[row_idx:(row_idx + a_mats_rows[i] + padding)]
-        #     c.append(output_ci[:a_mats_rows[i], :b_mats.size(1)])
-        #     row_idx += a_mats_rows[i] + padding
-        # c = torch.cat(c)
-        torch.cuda.nvtx.range_pop()
+        # torch.cuda.nvtx.range_push("nvtx-extractc")
+        # c_pad_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
+        # c_mat_rows_ps = torch.cuda.IntTensor(a_mats_rows.size(0) + 1)
+        # arg_c_pad_float = to_dgl_nd(c_pad_float)
+        # arg_c_pad_rows_ps = to_dgl_nd_for_write(c_pad_rows_ps)
+        # arg_c_mat_rows_ps = to_dgl_nd_for_write(c_mat_rows_ps)
+        # _CAPI_DGLKernelUnpadC2D(arg_c, arg_c_pad_float, arg_a_mats_rows, arg_da_mats_rows, arg_c_pad_rows_ps,
+        #                             arg_c_mat_rows_ps, c.size(0), c.size(1), block_dim, a_mats_rows.size(0))
+        # torch.cuda.nvtx.range_pop()
 
         if timing and first_step:
             first_step = False

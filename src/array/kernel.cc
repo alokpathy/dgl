@@ -559,10 +559,11 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadBlockSpMM")
     int K = args[9];
     int N = args[10];
     int num_rels = args[11];
+    NDArray C_mats = args[12];
     nvtxRangePop();
 
     pad_blockspmm(A_pad, A_mats, B_pad, C_pad, A_mats_rows, dA_mats_rows, 
-                    padding_arr, num_edges, M, K, N, num_rels);
+                    padding_arr, num_edges, M, K, N, num_rels, C_mats);
   });
 
 #ifdef USE_TVM

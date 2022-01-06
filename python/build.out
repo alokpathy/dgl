@@ -11,7 +11,6 @@ writing manifest file 'dgl.egg-info/SOURCES.txt'
 installing library code to build/bdist.linux-x86_64/egg
 running install_lib
 running build_py
-copying dgl/fused_gemm.py -> build/lib/dgl
 running build_ext
 creating build/bdist.linux-x86_64/egg
 creating build/bdist.linux-x86_64/egg/dgl
@@ -567,6 +566,7 @@ running install_data
 copying ../build/libdgl.so -> build/bdist.linux-x86_64/egg/dgl
 creating build/bdist.linux-x86_64/egg/dgl/tensoradapter
 creating build/bdist.linux-x86_64/egg/dgl/tensoradapter/pytorch
+copying ../build/tensoradapter/pytorch/libtensoradapter_pytorch_1.9.1.so -> build/bdist.linux-x86_64/egg/dgl/tensoradapter/pytorch
 creating build/bdist.linux-x86_64/egg/EGG-INFO
 copying dgl.egg-info/PKG-INFO -> build/bdist.linux-x86_64/egg/EGG-INFO
 copying dgl.egg-info/SOURCES.txt -> build/bdist.linux-x86_64/egg/EGG-INFO
@@ -590,27 +590,26 @@ Processing requests-2.26.0-py3.9.egg
 requests 2.26.0 is already the active version in easy-install.pth
 
 Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/requests-2.26.0-py3.9.egg
-Searching for networkx==2.6.2
-Best match: networkx 2.6.2
-Processing networkx-2.6.2-py3.9.egg
-networkx 2.6.2 is already the active version in easy-install.pth
+Searching for networkx==2.6.3
+Best match: networkx 2.6.3
+Processing networkx-2.6.3-py3.9.egg
+networkx 2.6.3 is already the active version in easy-install.pth
 
-Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/networkx-2.6.2-py3.9.egg
-Searching for scipy==1.7.0
-Best match: scipy 1.7.0
-Processing scipy-1.7.0-py3.9-linux-x86_64.egg
-scipy 1.7.0 is already the active version in easy-install.pth
+Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/networkx-2.6.3-py3.9.egg
+Searching for scipy==1.7.1
+Best match: scipy 1.7.1
+Processing scipy-1.7.1-py3.9-linux-x86_64.egg
+scipy 1.7.1 is already the active version in easy-install.pth
 
-Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/scipy-1.7.0-py3.9-linux-x86_64.egg
-Searching for numpy==1.21.1
-Best match: numpy 1.21.1
-Processing numpy-1.21.1-py3.9-linux-x86_64.egg
-numpy 1.21.1 is already the active version in easy-install.pth
+Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/scipy-1.7.1-py3.9-linux-x86_64.egg
+Searching for numpy==1.21.2
+Best match: numpy 1.21.2
+Adding numpy 1.21.2 to easy-install.pth file
 Installing f2py script to /home/ubuntu/anaconda3/envs/dgl-conda/bin
 Installing f2py3 script to /home/ubuntu/anaconda3/envs/dgl-conda/bin
 Installing f2py3.9 script to /home/ubuntu/anaconda3/envs/dgl-conda/bin
 
-Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/numpy-1.21.1-py3.9-linux-x86_64.egg
+Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages
 Searching for urllib3==1.26.6
 Best match: urllib3 1.26.6
 Processing urllib3-1.26.6-py3.9.egg
@@ -623,16 +622,17 @@ Processing idna-3.2-py3.9.egg
 idna 3.2 is already the active version in easy-install.pth
 
 Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/idna-3.2-py3.9.egg
-Searching for charset-normalizer==2.0.3
-Best match: charset-normalizer 2.0.3
-Processing charset_normalizer-2.0.3-py3.9.egg
-charset-normalizer 2.0.3 is already the active version in easy-install.pth
+Searching for charset-normalizer==2.0.6
+Best match: charset-normalizer 2.0.6
+Processing charset_normalizer-2.0.6-py3.9.egg
+charset-normalizer 2.0.6 is already the active version in easy-install.pth
 Installing normalizer script to /home/ubuntu/anaconda3/envs/dgl-conda/bin
 
-Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/charset_normalizer-2.0.3-py3.9.egg
+Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/charset_normalizer-2.0.6-py3.9.egg
 Searching for certifi==2021.5.30
 Best match: certifi 2021.5.30
-Adding certifi 2021.5.30 to easy-install.pth file
+Processing certifi-2021.5.30-py3.9.egg
+certifi 2021.5.30 is already the active version in easy-install.pth
 
-Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages
+Using /home/ubuntu/anaconda3/envs/dgl-conda/lib/python3.9/site-packages/certifi-2021.5.30-py3.9.egg
 Finished processing dependencies for dgl==0.7
