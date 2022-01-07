@@ -383,7 +383,7 @@ __global__ void SetEllColumns(int *columns, int num_blocks) {
   }
 }
 
-__global__ void PadA2D(__half *A_pad_ptr, __half *A_mats_ptr, int *A_mats_rows_ptr, int *a_mat_rows_ps, 
+__global__ void PadA2D(__half *A_pad_ptr, float *A_mats_ptr, int *A_mats_rows_ptr, int *a_mat_rows_ps, 
                           int *a_pad_rows_ps, int nnz, int num_rels, int dim1, int *row_to_rel) {
 
   int     id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -409,7 +409,7 @@ __global__ void PadA2D(__half *A_pad_ptr, __half *A_mats_ptr, int *A_mats_rows_p
     int rel = row_to_rel[row];
     int start_pad = a_pad_rows_ps[rel];
     int row_diff = row - a_mat_rows_ps[rel];
-    A_pad_ptr[(start_pad + row_diff) * dim1 + col] = A_mats_ptr[i];
+    A_pad_ptr[(start_pad + row_diff) * dim1 + col] = (__half) A_mats_ptr[i];
   }
 }
 
@@ -974,7 +974,7 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_mats, NDArray A_mats
   int dim1 = K;
 
   __half *A_pad_ptr = (__half *) A_pad->data;
-  __half *A_mats_ptr = (__half *) A_mats->data;
+  float *A_mats_ptr = (float *) A_mats->data;
 
   DGLType kDHalf = String2DGLType("float16");
   nvtxRangePushA("nvtx-instantiate-ndarray");
@@ -1333,87 +1333,87 @@ void pad_a2d(NDArray A_pad, NDArray A_mats, NDArray A_mats_rows, NDArray dA_mats
                 NDArray A_pad_rows_ps, NDArray A_mat_rows_ps, 
                 int dim0, int dim1, int num_edges, int num_rels) {
 
-  auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
-  __half *A_pad_ptr = (__half *) A_pad->data;
-  __half *A_mats_ptr = (__half *) A_mats->data;
-
-  int *dA_pad_rows_ps = (int *) A_pad_rows_ps->data;
-  int *dA_mat_rows_ps = (int *) A_mat_rows_ps->data;
-  int *A_mats_rows_ptr = (int *) A_mats_rows->data;
-  int *dA_mats_rows_ptr = (int *) dA_mats_rows->data;
-
-  cudaMemset(A_pad->data, 0, dim0 * dim1 * sizeof(__half));
-
-  int nnz = num_edges * dim1;
-  int total_data = 0;
-  int *hA_mat_rows_ps = new int[num_rels + 1]();
-  int *hA_pad_rows_ps = new int[num_rels + 1]();
-  hA_mat_rows_ps[0] = 0;
-  hA_pad_rows_ps[0] = 0;
-
-  nvtxRangePushA("nvtx-compute-ps");
-  int max_rel_nnz = 0;
-  for (int i = 1; i < num_rels + 1; i++) {
-    int padding = 0;
-    if (A_mats_rows_ptr[i - 1] % dim1 != 0) {
-      padding = dim1 - (A_mats_rows_ptr[i - 1] % dim1);
-    }
-    hA_pad_rows_ps[i] = hA_pad_rows_ps[i - 1] + (A_mats_rows_ptr[i - 1] + padding);
-    hA_mat_rows_ps[i] = hA_mat_rows_ps[i - 1] + A_mats_rows_ptr[i - 1];
-    total_data += A_mats_rows_ptr[i - 1] * dim1 * sizeof(__half);
-
-    if (A_mats_rows_ptr[i - 1] * dim1 > max_rel_nnz) {
-      max_rel_nnz = A_mats_rows_ptr[i - 1] * dim1;
-    }
-  }
-  nvtxRangePop();
-
-  nvtxRangePushA("nvtx-copy-ps");
-  CUDA_CALL( cudaMemcpyAsync(dA_mat_rows_ps, hA_mat_rows_ps, (num_rels + 1) * sizeof(int), 
-                                cudaMemcpyHostToDevice) );
-  CUDA_CALL( cudaMemcpyAsync(dA_pad_rows_ps, hA_pad_rows_ps, (num_rels + 1) * sizeof(int), 
-                                cudaMemcpyHostToDevice) );
-  nvtxRangePop();
-
-  nvtxRangePushA("nvtx-compute-rowtorel");
-  int *h_row_to_rel = new int[num_edges]();
-  int *d_row_to_rel;
-  int row_ctr = 0;
-  for (int i = 0; i < num_rels; i++) {
-    for (int j = 0; j < A_mats_rows_ptr[i]; j++) {
-      h_row_to_rel[row_ctr++] = i;
-    }
-  }
-  nvtxRangePop();
-  nvtxRangePushA("nvtx-copy-rowtorel");
-  cudaMalloc(&d_row_to_rel, num_edges * sizeof(int));
-  cudaMemcpyAsync(d_row_to_rel, h_row_to_rel, num_edges * sizeof(int), cudaMemcpyHostToDevice);
-  nvtxRangePop();
-
-  // const int nt_aoff = FindNumThreads(max_rel_nnz);
-  // const int nb_aoff = (max_rel_nnz + nt_aoff - 1) / nt_aoff;
-  const int nt_aoff = FindNumThreads(nnz);
-  const int nb_aoff = (nnz + nt_aoff - 1) / nt_aoff;
-
-  // cudaEvent_t start, stop;
-  // cudaEventCreate(&start);
-  // cudaEventCreate(&stop);
-
-  // cudaEventRecord(start);
-
-  CUDA_KERNEL_CALL( PadA2D, nb_aoff, nt_aoff, 0, thr_entry->stream, A_pad_ptr, A_mats_ptr, 
-                      dA_mats_rows_ptr, dA_mat_rows_ps, dA_pad_rows_ps, nnz, num_rels, dim1,
-                      d_row_to_rel );
-
-  // cudaEventRecord(stop);
-  // cudaEventSynchronize(stop);
-
-  // float copytime = 0.0f;
-  // cudaEventElapsedTime(&copytime, start, stop);
-  // copytime = copytime / 1000; // seconds
-
-  // std::cout << "total_data: " << total_data << " copy_time: " << copytime << " bandwidth GB/s: " << (total_data / copytime / GB) << std::endl;
-
+//   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
+//   __half *A_pad_ptr = (__half *) A_pad->data;
+//   __half *A_mats_ptr = (__half *) A_mats->data;
+// 
+//   int *dA_pad_rows_ps = (int *) A_pad_rows_ps->data;
+//   int *dA_mat_rows_ps = (int *) A_mat_rows_ps->data;
+//   int *A_mats_rows_ptr = (int *) A_mats_rows->data;
+//   int *dA_mats_rows_ptr = (int *) dA_mats_rows->data;
+// 
+//   cudaMemset(A_pad->data, 0, dim0 * dim1 * sizeof(__half));
+// 
+//   int nnz = num_edges * dim1;
+//   int total_data = 0;
+//   int *hA_mat_rows_ps = new int[num_rels + 1]();
+//   int *hA_pad_rows_ps = new int[num_rels + 1]();
+//   hA_mat_rows_ps[0] = 0;
+//   hA_pad_rows_ps[0] = 0;
+// 
+//   nvtxRangePushA("nvtx-compute-ps");
+//   int max_rel_nnz = 0;
+//   for (int i = 1; i < num_rels + 1; i++) {
+//     int padding = 0;
+//     if (A_mats_rows_ptr[i - 1] % dim1 != 0) {
+//       padding = dim1 - (A_mats_rows_ptr[i - 1] % dim1);
+//     }
+//     hA_pad_rows_ps[i] = hA_pad_rows_ps[i - 1] + (A_mats_rows_ptr[i - 1] + padding);
+//     hA_mat_rows_ps[i] = hA_mat_rows_ps[i - 1] + A_mats_rows_ptr[i - 1];
+//     total_data += A_mats_rows_ptr[i - 1] * dim1 * sizeof(__half);
+// 
+//     if (A_mats_rows_ptr[i - 1] * dim1 > max_rel_nnz) {
+//       max_rel_nnz = A_mats_rows_ptr[i - 1] * dim1;
+//     }
+//   }
+//   nvtxRangePop();
+// 
+//   nvtxRangePushA("nvtx-copy-ps");
+//   CUDA_CALL( cudaMemcpyAsync(dA_mat_rows_ps, hA_mat_rows_ps, (num_rels + 1) * sizeof(int), 
+//                                 cudaMemcpyHostToDevice) );
+//   CUDA_CALL( cudaMemcpyAsync(dA_pad_rows_ps, hA_pad_rows_ps, (num_rels + 1) * sizeof(int), 
+//                                 cudaMemcpyHostToDevice) );
+//   nvtxRangePop();
+// 
+//   nvtxRangePushA("nvtx-compute-rowtorel");
+//   int *h_row_to_rel = new int[num_edges]();
+//   int *d_row_to_rel;
+//   int row_ctr = 0;
+//   for (int i = 0; i < num_rels; i++) {
+//     for (int j = 0; j < A_mats_rows_ptr[i]; j++) {
+//       h_row_to_rel[row_ctr++] = i;
+//     }
+//   }
+//   nvtxRangePop();
+//   nvtxRangePushA("nvtx-copy-rowtorel");
+//   cudaMalloc(&d_row_to_rel, num_edges * sizeof(int));
+//   cudaMemcpyAsync(d_row_to_rel, h_row_to_rel, num_edges * sizeof(int), cudaMemcpyHostToDevice);
+//   nvtxRangePop();
+// 
+//   // const int nt_aoff = FindNumThreads(max_rel_nnz);
+//   // const int nb_aoff = (max_rel_nnz + nt_aoff - 1) / nt_aoff;
+//   const int nt_aoff = FindNumThreads(nnz);
+//   const int nb_aoff = (nnz + nt_aoff - 1) / nt_aoff;
+// 
+//   // cudaEvent_t start, stop;
+//   // cudaEventCreate(&start);
+//   // cudaEventCreate(&stop);
+// 
+//   // cudaEventRecord(start);
+// 
+//   CUDA_KERNEL_CALL( PadA2D, nb_aoff, nt_aoff, 0, thr_entry->stream, A_pad_ptr, A_mats_ptr, 
+//                       dA_mats_rows_ptr, dA_mat_rows_ps, dA_pad_rows_ps, nnz, num_rels, dim1,
+//                       d_row_to_rel );
+// 
+//   // cudaEventRecord(stop);
+//   // cudaEventSynchronize(stop);
+// 
+//   // float copytime = 0.0f;
+//   // cudaEventElapsedTime(&copytime, start, stop);
+//   // copytime = copytime / 1000; // seconds
+// 
+//   // std::cout << "total_data: " << total_data << " copy_time: " << copytime << " bandwidth GB/s: " << (total_data / copytime / GB) << std::endl;
+// 
 }
 
 void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim1, int dim2) {

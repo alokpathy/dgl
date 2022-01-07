@@ -195,17 +195,10 @@ class FusedGEMMBlockSpMM(torch.autograd.Function):
         a_pad = torch.cuda.HalfTensor(num_edges + padding, block_dim)
         torch.cuda.nvtx.range_pop()
 
-        torch.cuda.nvtx.range_push("nvtx-atohalf")
-        a_mat_cat = a_mats.half()
-        torch.cuda.nvtx.range_pop()
-
         torch.cuda.nvtx.range_push("nvtx-todglnd")
         arg_a_pad = to_dgl_nd(a_pad)
-        arg_a_mat = to_dgl_nd(a_mat_cat)
+        arg_a_mat = to_dgl_nd(a_mats)
         arg_a_mats_rows = to_dgl_nd(a_mats_rows)
-        torch.cuda.nvtx.range_pop()
-
-        torch.cuda.nvtx.range_push("nvtx-concat-mats")
         arg_b_mats = to_dgl_nd(b_mats)
         torch.cuda.nvtx.range_pop()
 
