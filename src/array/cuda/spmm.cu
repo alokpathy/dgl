@@ -1002,19 +1002,9 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_mats, NDArray A_mats
   cudaMemset(A_pad->data, 0, dim0 * dim1 * sizeof(__half));
 
   int nnz = num_edges * dim1;
-  int *hA_mat_rows_ps = new int[num_rels + 1]();
-  int *hA_pad_rows_ps = new int[num_rels + 1]();
-  hA_mat_rows_ps[0] = 0;
-  hA_pad_rows_ps[0] = 0;
 
   nvtxRangePushA("nvtx-compute-ps");
   thrust::exclusive_scan(thrust::device, dA_mats_rows_ptr, dA_mats_rows_ptr + num_rels, dA_mat_rows_ps);
-
-  // cudaMemcpy(hA_mat_rows_ps, dA_mat_rows_ps, (num_rels + 1) * sizeof(int), cudaMemcpyDeviceToHost);
-  // for (int i = 0; i < 5; i++) {
-  //   printf("i: %d dA_mat_rows_ps: %d\n", i, hA_mat_rows_ps[i]);
-  // }
-
   const int nt_vecadd = FindNumThreads(num_rels);
   const int nb_vecadd = (num_rels + nt_vecadd - 1) / nt_vecadd;
 
