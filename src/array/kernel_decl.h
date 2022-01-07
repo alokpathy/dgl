@@ -46,7 +46,7 @@ void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim
 
 int compute_pad(NDArray padding_arr, NDArray dA_mats_rows, int block_dim, int num_rels);
 
-void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, NDArray A_mats_rows, 
+void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_rows, 
                     NDArray dA_mats_rows, NDArray padding_arr, 
                     int num_edges, int M, int K, int N, int num_rels, NDArray C_mats);
 

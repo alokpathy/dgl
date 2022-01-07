@@ -953,7 +953,7 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, 
 #endif
 }
 
-void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, NDArray A_mats_rows, 
+void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_rows, 
                     NDArray dA_mats_rows, NDArray padding_arr,
                     int num_edges, int M, int K, int N, int num_rels,
                     NDArray C_mats) {
@@ -967,11 +967,14 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, 
   __half *A_pad_ptr = (__half *) A_pad->data;
   __half *A_mats_ptr = (__half *) A_mats->data;
 
+  DGLType kDHalf = String2DGLType("float16");
   // int *dA_pad_rows_ps = (int *) A_pad_rows_ps->data;
   // int *dA_mat_rows_ps = (int *) A_mat_rows_ps->data;
   nvtxRangePushA("nvtx-instantiate-ndarray");
   NDArray dA_pad_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
   NDArray dA_mat_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
+  NDArray C_pad = NDArray::Empty({M, N}, kDHalf, ctx);
+  std::cout << "C_pad.GetSize(): " << C_pad.GetSize() << std::endl;
   nvtxRangePop();
 
   int *dA_pad_rows_ps = (int *) dA_pad_rows_ps_arr->data;
@@ -1200,7 +1203,7 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray C_pad, 
 
   nvtxRangePushA("nvtx-unpad2d");
   CUDA_KERNEL_CALL( UnpadC2D, nb_aoff, nt_aoff, 0, thr_entry->stream, C_pad_ptr, C_mats_ptr, 
-                      dC_mats_rows_ptr, dC_mat_rows_ps, dC_pad_rows_ps, dim0 * dim1, num_rels, dim1, 
+                      dC_mats_rows_ptr, dC_mat_rows_ps, dC_pad_rows_ps, num_edges * dim1, num_rels, dim1, 
                       d_row_to_rel_matc );
   nvtxRangePop();
 }

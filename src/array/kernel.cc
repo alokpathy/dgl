@@ -526,22 +526,19 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadBlockSpMM")
     NDArray A_pad = args[0];
     NDArray A_mats = args[1];
     NDArray B_pad = args[2];
-    NDArray C_pad = args[3];
-    NDArray A_mats_rows = args[4];
-    NDArray dA_mats_rows = args[5];
-    // NDArray A_pad_rows_ps = args[6];
-    // NDArray A_mat_rows_ps = args[7];
-    NDArray padding_arr = args[6];
+    NDArray A_mats_rows = args[3];
+    NDArray dA_mats_rows = args[4];
+    NDArray padding_arr = args[5];
 
-    int num_edges = args[7];
-    int M = args[8];
-    int K = args[9];
-    int N = args[10];
-    int num_rels = args[11];
-    NDArray C_mats = args[12];
+    int num_edges = args[6];
+    int M = args[7];
+    int K = args[8];
+    int N = args[9];
+    int num_rels = args[10];
+    NDArray C_mats = args[11];
     nvtxRangePop();
 
-    pad_blockspmm(A_pad, A_mats, B_pad, C_pad, A_mats_rows, dA_mats_rows, 
+    pad_blockspmm(A_pad, A_mats, B_pad, A_mats_rows, dA_mats_rows, 
                     padding_arr, num_edges, M, K, N, num_rels, C_mats);
   });
 
