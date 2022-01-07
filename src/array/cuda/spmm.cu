@@ -454,6 +454,15 @@ __global__ void VecAdd(int *src1, int *src2, int *dst, int len) {
   }
 }
 
+__global__ void ToHalf(__half *dst, float *src, int nnz) {
+  int     id = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for (int i = id; i < nnz; i += stride) {
+    dst[i] = (__half) src[i];
+  }
+}
+
 __global__ void RowToRel(int *row_to_rel, int *a_mats_rows_ps, int num_rels) {
   int     id = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -953,7 +962,7 @@ void fused_gemm_blockspmm(NDArray A, NDArray B, NDArray C, NDArray A_mats_rows, 
 #endif
 }
 
-void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_rows, 
+void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_mats, NDArray A_mats_rows, 
                     NDArray dA_mats_rows, NDArray padding_arr,
                     int num_edges, int M, int K, int N, int num_rels,
                     NDArray C_mats) {
@@ -968,13 +977,19 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_
   __half *A_mats_ptr = (__half *) A_mats->data;
 
   DGLType kDHalf = String2DGLType("float16");
-  // int *dA_pad_rows_ps = (int *) A_pad_rows_ps->data;
-  // int *dA_mat_rows_ps = (int *) A_mat_rows_ps->data;
   nvtxRangePushA("nvtx-instantiate-ndarray");
   NDArray dA_pad_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
   NDArray dA_mat_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
+  NDArray B_pad = NDArray::Empty({K * num_rels, N}, kDHalf, ctx);
   NDArray C_pad = NDArray::Empty({M, N}, kDHalf, ctx);
-  std::cout << "C_pad.GetSize(): " << C_pad.GetSize() << std::endl;
+  nvtxRangePop();
+
+  nvtxRangePushA("nvtx-half-cast");
+  const int nt_tohalf = FindNumThreads(K * num_rels * N);
+  const int nb_tohalf = (K * N + nt_tohalf - 1) / nt_tohalf;
+
+  CUDA_KERNEL_CALL( ToHalf, nb_tohalf, nt_tohalf, 0, thr_entry->stream, (__half *) B_pad->data, 
+                          (float *) B_mats->data, K * num_rels * N );
   nvtxRangePop();
 
   int *dA_pad_rows_ps = (int *) dA_pad_rows_ps_arr->data;
@@ -1170,10 +1185,10 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_
     }
     hC_pad_rows_ps[i] = hC_pad_rows_ps[i - 1] + (C_mats_rows_ptr[i - 1] + padding);
     hC_mat_rows_ps[i] = hC_mat_rows_ps[i - 1] + C_mats_rows_ptr[i - 1];
-    total_data += C_mats_rows_ptr[i - 1] * dim1 * sizeof(float);
+    total_data += C_mats_rows_ptr[i - 1] * N * sizeof(float);
 
-    if (C_mats_rows_ptr[i - 1] * dim1 > max_rel_nnz) {
-      max_rel_nnz = C_mats_rows_ptr[i - 1] * dim1;
+    if (C_mats_rows_ptr[i - 1] * N > max_rel_nnz) {
+      max_rel_nnz = C_mats_rows_ptr[i - 1] * N;
     }
   }
   nvtxRangePop();
@@ -1189,7 +1204,7 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_
   const int nb_aoff = (max_rel_nnz + nt_aoff - 1) / nt_aoff;
 
   nvtxRangePushA("nvtx-rowtorel-unpad");
-  int *h_row_to_rel_matc = new int[dim0]();
+  int *h_row_to_rel_matc = new int[num_edges]();
   int *d_row_to_rel_matc;
   int row_ctr_matc = 0;
   for (int i = 0; i < num_rels; i++) {
@@ -1197,13 +1212,13 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_pad, NDArray A_mats_
       h_row_to_rel_matc[row_ctr_matc++] = i;
     }
   }
-  cudaMalloc(&d_row_to_rel_matc, dim0 * sizeof(int));
-  cudaMemcpyAsync(d_row_to_rel_matc, h_row_to_rel_matc, dim0 * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMalloc(&d_row_to_rel_matc, num_edges * sizeof(int));
+  cudaMemcpyAsync(d_row_to_rel_matc, h_row_to_rel_matc, num_edges * sizeof(int), cudaMemcpyHostToDevice);
   nvtxRangePop();
 
   nvtxRangePushA("nvtx-unpad2d");
   CUDA_KERNEL_CALL( UnpadC2D, nb_aoff, nt_aoff, 0, thr_entry->stream, C_pad_ptr, C_mats_ptr, 
-                      dC_mats_rows_ptr, dC_mat_rows_ps, dC_pad_rows_ps, num_edges * dim1, num_rels, dim1, 
+                      dC_mats_rows_ptr, dC_mat_rows_ps, dC_pad_rows_ps, num_edges * N, num_rels, N, 
                       d_row_to_rel_matc );
   nvtxRangePop();
 }

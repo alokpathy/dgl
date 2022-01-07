@@ -525,7 +525,7 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadBlockSpMM")
     nvtxRangePush("nvtx-capi-preproc");
     NDArray A_pad = args[0];
     NDArray A_mats = args[1];
-    NDArray B_pad = args[2];
+    NDArray B_mats = args[2];
     NDArray A_mats_rows = args[3];
     NDArray dA_mats_rows = args[4];
     NDArray padding_arr = args[5];
@@ -538,7 +538,7 @@ DGL_REGISTER_GLOBAL("fused_gemm._CAPI_DGLKernelPadBlockSpMM")
     NDArray C_mats = args[11];
     nvtxRangePop();
 
-    pad_blockspmm(A_pad, A_mats, B_pad, A_mats_rows, dA_mats_rows, 
+    pad_blockspmm(A_pad, A_mats, B_mats, A_mats_rows, dA_mats_rows, 
                     padding_arr, num_edges, M, K, N, num_rels, C_mats);
   });
 
