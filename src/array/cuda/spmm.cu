@@ -976,8 +976,8 @@ void pad_blockspmm(NDArray A_pad, NDArray A_mats, NDArray B_mats, NDArray A_mats
   __half *A_pad_ptr = (__half *) A_pad->data;
   float *A_mats_ptr = (float *) A_mats->data;
 
-  DGLType kDHalf = String2DGLType("float16");
   nvtxRangePushA("nvtx-instantiate-ndarray");
+  DGLType kDHalf = String2DGLType("float16");
   NDArray dA_pad_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
   NDArray dA_mat_rows_ps_arr = NDArray::Empty({num_rels + 1}, A_mats_rows->dtype, ctx);
   NDArray B_pad = NDArray::Empty({K * num_rels, N}, kDHalf, ctx);
@@ -1424,8 +1424,29 @@ void unpad_c(NDArray C3D, NDArray C_mats, NDArray C_mats_rows, int dim0, int dim
   cudaDeviceSynchronize();
 }
 
+__device__ void Reduce(int* x, size_t n) {
+  size_t tid = threadIdx.x;
+
+  size_t k = (n+2-1)/2;
+
+  if (tid < k && tid+k<n) {
+    x[tid] += x[tid+k];
+  }
+  __syncthreads();
+
+
+  if (k > 1) {
+    Reduce(x, k);
+  }
+}
+
+__global__ void ReduceRec(int* x, size_t n) {
+  Reduce(x, n);
+}
+
 int compute_pad(NDArray padding_arr, NDArray dA_mats_rows, int block_dim, int num_rels) {
   auto* thr_entry = runtime::CUDAThreadEntry::ThreadLocal();
+  const auto& ctx = padding_arr->ctx;
   int *padding_arr_ptr = (int *) padding_arr->data;
   int *dA_mats_rows_ptr = (int *) dA_mats_rows->data;
 
@@ -1437,7 +1458,18 @@ int compute_pad(NDArray padding_arr, NDArray dA_mats_rows, int block_dim, int nu
   CUDA_KERNEL_CALL( ComputePad, nb_aoff, nt_aoff, 0, thr_entry->stream, padding_arr_ptr, dA_mats_rows_ptr, 
                       block_dim, num_rels );
 
-  int padding = thrust::reduce(thrust::device, padding_arr_ptr, padding_arr_ptr + num_rels, 0);
+  NDArray padding_arr_reduce = NDArray::Empty({num_rels}, padding_arr->dtype, ctx);
+  cudaMemcpyAsync(padding_arr_reduce->data, padding_arr_ptr, num_rels * sizeof(int), cudaMemcpyDeviceToDevice);
+
+  const int nt_reduce = FindNumThreads(num_rels);
+  const int nb_reduce = 1;
+
+  CUDA_KERNEL_CALL( ReduceRec, nb_reduce, nt_reduce, 0, thr_entry->stream, (int *) padding_arr_reduce->data, 
+                          num_rels );
+
+  int padding;
+  cudaMemcpyAsync(&padding, padding_arr_reduce->data, sizeof(int), cudaMemcpyDeviceToHost);
+  // int padding = thrust::reduce(thrust::device, padding_arr_ptr, padding_arr_ptr + num_rels, 0);
   return padding;
 }
 
